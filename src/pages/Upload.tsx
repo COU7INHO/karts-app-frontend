@@ -56,8 +56,17 @@ const UploadPage = () => {
   const saveMutation = useMutation({
     mutationFn: () => {
       const selectedDrivers = drivers
-        .filter(d => d.selected)
+        .filter(d => d.selected === true)
         .map(({ selected, ...driver }) => driver);
+      
+      console.log('Total drivers from OCR:', drivers.length);
+      console.log('Selected drivers count:', selectedDrivers.length);
+      console.log('Selected drivers:', selectedDrivers.map(d => d.name));
+      console.log('Full payload:', {
+        circuit_id: parseInt(circuitId),
+        date: format(raceDate, 'yyyy-MM-dd'),
+        selected_drivers: selectedDrivers,
+      });
       
       return api.saveRaceResults({
         circuit_id: parseInt(circuitId),
