@@ -181,15 +181,31 @@ export const api = {
     const formData = new FormData();
     formData.append('image', file);
     
-    const response = await fetch(`${API_BASE_URL}/races/upload-image/`, {
-      method: 'POST',
-      headers: {
-        'ngrok-skip-browser-warning': 'true',
-      },
-      body: formData,
-    });
-    if (!response.ok) throw new Error('Failed to process image');
-    return response.json();
+    console.log('Uploading image to:', `${API_BASE_URL}/races/upload-image/`);
+    console.log('File:', file.name, file.type, file.size);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/races/upload-image/`, {
+        method: 'POST',
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+        body: formData,
+      });
+      
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed:', errorText);
+        throw new Error(`Failed to process image: ${response.status}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   },
 
   saveRaceResults: async (data: {
