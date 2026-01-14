@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, Link } from 'react-router-dom';
-import { GitCompare, X } from 'lucide-react';
+import { GitCompare, X, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,17 +13,28 @@ const ComparePage = () => {
   const [searchParams] = useSearchParams();
   const initialIds = searchParams.get('ids')?.split(',').map(Number).filter(Boolean) || [];
   const [selectedIds, setSelectedIds] = useState<number[]>(initialIds);
+  const [circuitFilter, setCircuitFilter] = useState<string>('all');
 
   const { data: drivers } = useQuery({
     queryKey: ['drivers'],
     queryFn: () => api.getDrivers(),
   });
 
-  const { data: comparison, isLoading, refetch } = useQuery({
-    queryKey: ['compare', selectedIds],
-    queryFn: () => api.compareDrivers(selectedIds),
+  const { data: circuits } = useQuery({
+    queryKey: ['circuits'],
+    queryFn: () => api.getCircuits(),
+  });
+
+  const { data: comparison, isLoading } = useQuery({
+    queryKey: ['compare', selectedIds, circuitFilter],
+    queryFn: () => api.compareDrivers(
+      selectedIds,
+      circuitFilter === 'all' ? undefined : parseInt(circuitFilter)
+    ),
     enabled: selectedIds.length >= 2,
   });
+
+  const selectedCircuit = circuits?.find(c => c.id.toString() === circuitFilter);
 
   const addDriver = (id: string) => {
     if (selectedIds.length < 4 && !selectedIds.includes(parseInt(id))) {
@@ -68,17 +79,46 @@ const ComparePage = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-lg racing-gradient flex items-center justify-center">
             <GitCompare className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
             <h1 className="page-title">COMPARE DRIVERS</h1>
-            <p className="page-subtitle">Select 2-4 drivers to compare their performance</p>
+            <p className="page-subtitle">
+              {selectedCircuit 
+                ? `Comparing at ${selectedCircuit.name}`
+                : 'Select 2-4 drivers to compare their performance'
+              }
+            </p>
           </div>
         </div>
+
+        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
+          <SelectTrigger className="w-full md:w-64">
+            <SelectValue placeholder="Filter by circuit" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Circuits</SelectItem>
+            {circuits?.map((circuit) => (
+              <SelectItem key={circuit.id} value={circuit.id.toString()}>
+                {circuit.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Warning for cross-circuit comparison */}
+      {circuitFilter === 'all' && selectedIds.length >= 2 && (
+        <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-600">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm">
+            <strong>Warning:</strong> Comparing across all circuits. Lap times may not be directly comparable as track lengths and conditions vary.
+          </p>
+        </div>
+      )}
 
       {/* Driver Selection */}
       <div className="bg-card rounded-lg border border-border p-6">
@@ -92,7 +132,7 @@ const ComparePage = () => {
                 key={id}
                 className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg"
               >
-                <span className="font-medium">{driver?.name || `Driver #${id}`}</span>
+                <span className="font-medium">{driver?.name || 'Unknown Driver'}</span>
                 <button
                   onClick={() => removeDriver(id)}
                   className="p-1 hover:bg-primary/20 rounded"
@@ -140,6 +180,7 @@ const ComparePage = () => {
                 <tr>
                   <th>Driver</th>
                   <th>Total Races</th>
+                  <th>Total Laps</th>
                   <th>Best Lap</th>
                   <th>Average Lap</th>
                 </tr>
@@ -156,6 +197,7 @@ const ComparePage = () => {
                       </Link>
                     </td>
                     <td>{driver.total_races}</td>
+                    <td>{driver.total_laps}</td>
                     <td className="lap-time text-primary">{driver.best_lap}</td>
                     <td className="lap-time">{driver.average_lap}</td>
                   </tr>

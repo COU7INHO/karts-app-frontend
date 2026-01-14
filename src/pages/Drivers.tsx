@@ -41,7 +41,6 @@ const DriversPage = () => {
                 </div>
                 <div>
                   <p className="font-medium text-lg">{driver.name}</p>
-                  <p className="text-sm text-muted-foreground">Driver #{driver.id}</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />

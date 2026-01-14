@@ -51,37 +51,34 @@ const RacesPage = () => {
           <table className="racing-table">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Date</th>
                 <th>Circuit</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
             <tbody>
-              {races.map((race) => (
-                <tr key={race.id}>
-                  <td>
-                    <Link to={`/races/${race.id}`} className="hover:text-primary">
-                      #{race.id}
-                    </Link>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      {race.date}
-                    </div>
-                  </td>
-                  <td>{race.circuit_name || `Circuit #${race.circuit}`}</td>
-                  <td>
-                    <Link
-                      to={`/races/${race.id}`}
-                      className="p-2 rounded-lg hover:bg-secondary inline-flex"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {races.map((race) => {
+                const circuit = circuits?.find(c => c.id === race.circuit);
+                return (
+                  <tr key={race.id}>
+                    <td>
+                      <Link to={`/races/${race.id}`} className="flex items-center gap-2 hover:text-primary">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        {race.date}
+                      </Link>
+                    </td>
+                    <td>{circuit?.name || race.circuit_name || 'Unknown Circuit'}</td>
+                    <td>
+                      <Link
+                        to={`/races/${race.id}`}
+                        className="p-2 rounded-lg hover:bg-secondary inline-flex"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
