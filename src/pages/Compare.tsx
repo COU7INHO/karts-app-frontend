@@ -46,20 +46,23 @@ const ComparePage = () => {
     setSelectedIds(selectedIds.filter(i => i !== id));
   };
 
-  const timeToSeconds = (time: string) => {
+  const timeToSeconds = (time: string | null): number | null => {
+    if (!time) return null;
     const parts = time.split(':');
     const mins = parseInt(parts[0]);
     const secs = parseFloat(parts[1]);
     return mins * 60 + secs;
   };
 
-  const chartData = comparison?.drivers.map(driver => ({
-    name: driver.name,
-    best_lap: timeToSeconds(driver.best_lap),
-    average_lap: timeToSeconds(driver.average_lap),
-    best_lap_display: driver.best_lap,
-    average_lap_display: driver.average_lap,
-  })) || [];
+  const chartData = comparison?.drivers
+    .filter(driver => driver.best_lap && driver.average_lap)
+    .map(driver => ({
+      name: driver.name,
+      best_lap: timeToSeconds(driver.best_lap),
+      average_lap: timeToSeconds(driver.average_lap),
+      best_lap_display: driver.best_lap,
+      average_lap_display: driver.average_lap,
+    })) || [];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -198,8 +201,8 @@ const ComparePage = () => {
                     </td>
                     <td>{driver.total_races}</td>
                     <td>{driver.total_laps}</td>
-                    <td className="lap-time text-primary">{driver.best_lap}</td>
-                    <td className="lap-time">{driver.average_lap}</td>
+                    <td className="lap-time text-primary">{driver.best_lap || 'N/A'}</td>
+                    <td className="lap-time">{driver.average_lap || 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

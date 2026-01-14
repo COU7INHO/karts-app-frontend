@@ -36,7 +36,8 @@ const RaceDetailPage = () => {
   });
 
   // Convert lap time string to seconds
-  const timeToSeconds = (time: string) => {
+  const timeToSeconds = (time: string | null): number | null => {
+    if (!time) return null;
     const parts = time.split(':');
     const mins = parseInt(parts[0]);
     const secs = parseFloat(parts[1]);
@@ -47,7 +48,9 @@ const RaceDetailPage = () => {
   const sortedResults = useMemo(() => {
     if (!race) return [];
     return [...race.results].sort((a, b) => {
-      return timeToSeconds(a.total_time) - timeToSeconds(b.total_time);
+      const timeA = timeToSeconds(a.total_time) ?? Infinity;
+      const timeB = timeToSeconds(b.total_time) ?? Infinity;
+      return timeA - timeB;
     });
   }, [race]);
 
@@ -322,7 +325,7 @@ const RaceDetailPage = () => {
             <table className="racing-table">
               <thead>
                 <tr>
-                  <th className="w-20">Lap</th>
+                  <th className="w-24 whitespace-nowrap">Lap</th>
                   {driverNames.map(name => (
                     <th key={name}>{name}</th>
                   ))}
