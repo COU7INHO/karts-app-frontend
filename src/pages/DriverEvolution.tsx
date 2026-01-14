@@ -29,7 +29,8 @@ const DriverEvolutionPage = () => {
   const selectedCircuit = circuits?.find(c => c.id.toString() === circuitFilter);
 
   // Convert lap times to seconds for charting
-  const timeToSeconds = (time: string) => {
+  const timeToSeconds = (time: string | null): number | null => {
+    if (!time) return null;
     const parts = time.split(':');
     const mins = parseInt(parts[0]);
     const secs = parseFloat(parts[1]);
@@ -38,20 +39,25 @@ const DriverEvolutionPage = () => {
 
   const chartData = useMemo(() => {
     if (!evolution) return [];
-    return evolution.evolution.map(item => ({
-      date: item.date,
-      fastest_lap: timeToSeconds(item.fastest_lap),
-      average_lap: timeToSeconds(item.average_lap),
-      fastest_lap_display: item.fastest_lap,
-      average_lap_display: item.average_lap,
-    }));
+    return evolution.evolution
+      .filter(item => item.fastest_lap && item.average_lap)
+      .map(item => ({
+        date: item.date,
+        fastest_lap: timeToSeconds(item.fastest_lap),
+        average_lap: timeToSeconds(item.average_lap),
+        fastest_lap_display: item.fastest_lap,
+        average_lap_display: item.average_lap,
+      }));
   }, [evolution]);
 
   // Calculate dynamic Y-axis domain
   const yAxisDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 60];
     
-    const allValues = chartData.flatMap(d => [d.fastest_lap, d.average_lap]);
+    const allValues = chartData
+      .flatMap(d => [d.fastest_lap, d.average_lap])
+      .filter((v): v is number => v !== null);
+    if (allValues.length === 0) return [0, 60];
     const minValue = Math.min(...allValues);
     const maxValue = Math.max(...allValues);
     
