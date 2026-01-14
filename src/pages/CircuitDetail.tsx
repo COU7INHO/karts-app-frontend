@@ -122,10 +122,10 @@ const CircuitDetailPage = () => {
                     <Flag className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium">Race #{race.id}</p>
+                    <p className="font-medium">{race.date}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-3 h-3" />
-                      {race.date}
+                      Race session
                     </div>
                   </div>
                 </div>

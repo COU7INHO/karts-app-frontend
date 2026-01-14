@@ -39,6 +39,7 @@ export interface DriverComparison {
   id: number;
   name: string;
   total_races: number;
+  total_laps: number;
   best_lap: string;
   average_lap: string;
 }
@@ -130,14 +131,20 @@ export const api = {
     return response.json();
   },
 
-  getDriverEvolution: async (id: number): Promise<DriverEvolution> => {
-    const response = await fetch(`${API_BASE_URL}/drivers/${id}/evolution/`, { headers: getHeaders() });
+  getDriverEvolution: async (id: number, circuitId?: number): Promise<DriverEvolution> => {
+    const url = circuitId
+      ? `${API_BASE_URL}/drivers/${id}/evolution/?circuit=${circuitId}`
+      : `${API_BASE_URL}/drivers/${id}/evolution/`;
+    const response = await fetch(url, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch driver evolution');
     return response.json();
   },
 
-  compareDrivers: async (ids: number[]): Promise<{ drivers: DriverComparison[] }> => {
-    const response = await fetch(`${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}`, { headers: getHeaders() });
+  compareDrivers: async (ids: number[], circuitId?: number): Promise<{ drivers: DriverComparison[] }> => {
+    const url = circuitId
+      ? `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}&circuit=${circuitId}`
+      : `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}`;
+    const response = await fetch(url, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to compare drivers');
     return response.json();
   },
@@ -171,8 +178,11 @@ export const api = {
     return response.json();
   },
 
-  getLeaderboard: async (): Promise<Leaderboard> => {
-    const response = await fetch(`${API_BASE_URL}/races/leaderboard/`, { headers: getHeaders() });
+  getLeaderboard: async (circuitId?: number): Promise<Leaderboard> => {
+    const url = circuitId
+      ? `${API_BASE_URL}/races/leaderboard/?circuit=${circuitId}`
+      : `${API_BASE_URL}/races/leaderboard/`;
+    const response = await fetch(url, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch leaderboard');
     return response.json();
   },

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 import { api, LeaderboardEntry } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PositionBadge from '@/components/PositionBadge';
 import { useState } from 'react';
@@ -44,11 +45,19 @@ const LeaderboardTable = ({ entries, type }: { entries: LeaderboardEntry[]; type
 
 const LeaderboardPage = () => {
   const [period, setPeriod] = useState<'overall' | 'last_year'>('overall');
+  const [circuitFilter, setCircuitFilter] = useState<string>('all');
+
+  const { data: circuits } = useQuery({
+    queryKey: ['circuits'],
+    queryFn: () => api.getCircuits(),
+  });
 
   const { data: leaderboard, isLoading } = useQuery({
-    queryKey: ['leaderboard'],
-    queryFn: () => api.getLeaderboard(),
+    queryKey: ['leaderboard', circuitFilter],
+    queryFn: () => api.getLeaderboard(circuitFilter === 'all' ? undefined : parseInt(circuitFilter)),
   });
+
+  const selectedCircuit = circuits?.find(c => c.id.toString() === circuitFilter);
 
   if (isLoading) {
     return (
@@ -62,16 +71,35 @@ const LeaderboardPage = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="page-header">
+      <div className="page-header flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-lg racing-gradient flex items-center justify-center">
             <Trophy className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
             <h1 className="page-title">LEADERBOARD</h1>
-            <p className="page-subtitle">Top performers across all races</p>
+            <p className="page-subtitle">
+              {selectedCircuit 
+                ? `Top performers at ${selectedCircuit.name}`
+                : 'Top performers across all races'
+              }
+            </p>
           </div>
         </div>
+
+        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
+          <SelectTrigger className="w-full md:w-64">
+            <SelectValue placeholder="Filter by circuit" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Circuits</SelectItem>
+            {circuits?.map((circuit) => (
+              <SelectItem key={circuit.id} value={circuit.id.toString()}>
+                {circuit.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Period Toggle */}
