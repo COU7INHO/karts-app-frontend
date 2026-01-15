@@ -17,6 +17,65 @@ interface DriverSelection extends OCRDriver {
   selected: boolean;
 }
 
+// Convert "0:36.195" to seconds (36.195)
+const timeToSeconds = (timeString: string | null): number | null => {
+  if (!timeString || timeString === null) {
+    return null;
+  }
+  const parts = timeString.split(':');
+  if (parts.length !== 2) return null;
+  const minutes = parseInt(parts[0]);
+  const seconds = parseFloat(parts[1]);
+  if (isNaN(minutes) || isNaN(seconds)) return null;
+  return minutes * 60 + seconds;
+};
+
+// Convert seconds (36.195) back to "0:36.195"
+const secondsToTime = (totalSeconds: number): string => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toFixed(3).padStart(6, '0')}`;
+};
+
+// Recalculate fastest and average lap from individual laps
+const recalculateDriverTimes = (driver: OCRDriver): OCRDriver => {
+  if (!driver.laps || driver.laps.length === 0) {
+    return driver;
+  }
+
+  // Calculate fastest lap
+  let fastestLapTime = driver.laps[0].lap_time;
+  let fastestSeconds = timeToSeconds(fastestLapTime) ?? Infinity;
+
+  driver.laps.forEach(lap => {
+    const lapSeconds = timeToSeconds(lap.lap_time);
+    if (lapSeconds !== null && lapSeconds < fastestSeconds) {
+      fastestSeconds = lapSeconds;
+      fastestLapTime = lap.lap_time;
+    }
+  });
+
+  // Calculate average lap
+  let totalSeconds = 0;
+  let validLaps = 0;
+
+  driver.laps.forEach(lap => {
+    const lapSeconds = timeToSeconds(lap.lap_time);
+    if (lapSeconds !== null) {
+      totalSeconds += lapSeconds;
+      validLaps++;
+    }
+  });
+
+  const averageLap = validLaps > 0 ? secondsToTime(totalSeconds / validLaps) : driver.average_lap;
+
+  return {
+    ...driver,
+    fastest_lap: fastestLapTime,
+    average_lap: averageLap,
+  };
+};
+
 const UploadPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,8 +96,9 @@ const UploadPage = () => {
   const uploadMutation = useMutation({
     mutationFn: (file: File) => api.uploadImage(file),
     onSuccess: (data) => {
+      // Recalculate fastest_lap and average_lap from individual laps (OCR values can be wrong)
       const driversWithSelection = data.drivers.map(driver => ({
-        ...driver,
+        ...recalculateDriverTimes(driver),
         selected: true,
       }));
       setDrivers(driversWithSelection);
