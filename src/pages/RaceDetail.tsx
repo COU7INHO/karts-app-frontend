@@ -23,6 +23,7 @@ const DRIVER_COLORS = [
 const RaceDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+  const [selectedDrivers, setSelectedDrivers] = useState<Set<string>>(new Set());
 
   const { data: race, isLoading, error } = useQuery({
     queryKey: ['race', id],
@@ -174,6 +175,28 @@ const RaceDetailPage = () => {
   const circuit = circuits?.find(c => c.id === race.circuit);
   const driverNames = race.results.map(r => r.driver_name);
 
+  // Initialize selected drivers when race data loads
+  if (race && selectedDrivers.size === 0 && driverNames.length > 0) {
+    setSelectedDrivers(new Set(driverNames));
+  }
+
+  const toggleDriver = (driverName: string) => {
+    setSelectedDrivers(prev => {
+      const next = new Set(prev);
+      if (next.has(driverName)) {
+        // Don't allow deselecting the last driver
+        if (next.size > 1) {
+          next.delete(driverName);
+        }
+      } else {
+        next.add(driverName);
+      }
+      return next;
+    });
+  };
+
+  const filteredDriverNames = driverNames.filter(name => selectedDrivers.has(name));
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center gap-4">
@@ -276,7 +299,43 @@ const RaceDetailPage = () => {
       {/* Lap Time Progression Chart */}
       {chartData.length > 0 && (
         <div className="bg-card rounded-lg border border-border p-6">
-          <h3 className="font-display text-xl tracking-wider mb-6">LAP TIME PROGRESSION</h3>
+          <h3 className="font-display text-xl tracking-wider mb-4">LAP TIME PROGRESSION</h3>
+          
+          {/* Driver Filter */}
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground mb-3">Filter Drivers:</p>
+            <div className="flex flex-wrap gap-2">
+              {driverNames.map((driverName, index) => {
+                const isSelected = selectedDrivers.has(driverName);
+                const color = DRIVER_COLORS[index % DRIVER_COLORS.length];
+                const isLastSelected = isSelected && selectedDrivers.size === 1;
+                
+                return (
+                  <button
+                    key={driverName}
+                    onClick={() => toggleDriver(driverName)}
+                    disabled={isLastSelected}
+                    className={cn(
+                      'px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2',
+                      isSelected 
+                        ? 'text-white' 
+                        : 'bg-transparent opacity-50 hover:opacity-75',
+                      isLastSelected && 'cursor-not-allowed'
+                    )}
+                    style={{
+                      borderColor: color,
+                      backgroundColor: isSelected ? color : 'transparent',
+                      color: isSelected ? 'white' : color,
+                    }}
+                    title={isLastSelected ? 'At least one driver must be selected' : ''}
+                  >
+                    {driverName}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
@@ -299,18 +358,21 @@ const RaceDetailPage = () => {
                 />
                 <Tooltip content={<CustomChartTooltip />} />
                 <Legend />
-                {driverNames.map((driverName, index) => (
-                  <Line
-                    key={driverName}
-                    type="monotone"
-                    dataKey={driverName}
-                    name={driverName}
-                    stroke={DRIVER_COLORS[index % DRIVER_COLORS.length]}
-                    strokeWidth={2}
-                    dot={{ fill: DRIVER_COLORS[index % DRIVER_COLORS.length], r: 4 }}
-                    connectNulls
-                  />
-                ))}
+                {filteredDriverNames.map((driverName) => {
+                  const originalIndex = driverNames.indexOf(driverName);
+                  return (
+                    <Line
+                      key={driverName}
+                      type="monotone"
+                      dataKey={driverName}
+                      name={driverName}
+                      stroke={DRIVER_COLORS[originalIndex % DRIVER_COLORS.length]}
+                      strokeWidth={2}
+                      dot={{ fill: DRIVER_COLORS[originalIndex % DRIVER_COLORS.length], r: 4 }}
+                      connectNulls
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
