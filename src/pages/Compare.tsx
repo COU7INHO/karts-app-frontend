@@ -64,6 +64,18 @@ const ComparePage = () => {
       average_lap_display: driver.average_lap,
     })) || [];
 
+  // Calculate dynamic Y-axis domain for charts
+  const allBestLaps = chartData.map(d => d.best_lap).filter((v): v is number => v !== null);
+  const allAvgLaps = chartData.map(d => d.average_lap).filter((v): v is number => v !== null);
+  
+  const bestLapDomain = allBestLaps.length > 0 
+    ? [Math.min(...allBestLaps) - 2, Math.max(...allBestLaps) + 2] as [number, number]
+    : undefined;
+  
+  const avgLapDomain = allAvgLaps.length > 0
+    ? [Math.min(...allAvgLaps) - 2, Math.max(...allAvgLaps) + 2] as [number, number]
+    : undefined;
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -221,6 +233,7 @@ const ComparePage = () => {
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
+                      domain={bestLapDomain}
                       tickFormatter={(value) => {
                         const mins = Math.floor(value / 60);
                         const secs = (value % 60).toFixed(1);
@@ -244,6 +257,7 @@ const ComparePage = () => {
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
+                      domain={avgLapDomain}
                       tickFormatter={(value) => {
                         const mins = Math.floor(value / 60);
                         const secs = (value % 60).toFixed(1);

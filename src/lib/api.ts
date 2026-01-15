@@ -56,7 +56,23 @@ export interface CircuitDetail extends Circuit {
     total_races: number;
     total_laps: number;
     fastest_lap_ever: string;
+    fastest_lap_driver?: string;
   };
+}
+
+export interface CircuitEvolution {
+  circuit_id: number;
+  circuit_name: string;
+  fastest_lap_evolution: {
+    date: string;
+    race_id: number;
+    lap_time: string;
+  }[];
+  average_lap_evolution: {
+    date: string;
+    race_id: number;
+    lap_time: string;
+  }[];
 }
 
 export interface Race {
@@ -159,6 +175,12 @@ export const api = {
   getCircuit: async (id: number): Promise<CircuitDetail> => {
     const response = await fetch(`${API_BASE_URL}/circuits/${id}/`, { headers: getHeaders() });
     if (!response.ok) throw new Error('Failed to fetch circuit');
+    return response.json();
+  },
+
+  getCircuitEvolution: async (id: number): Promise<CircuitEvolution> => {
+    const response = await fetch(`${API_BASE_URL}/circuits/${id}/evolution/`, { headers: getHeaders() });
+    if (!response.ok) throw new Error('Failed to fetch circuit evolution');
     return response.json();
   },
 
