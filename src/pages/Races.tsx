@@ -51,6 +51,7 @@ const RacesPage = () => {
           <table className="racing-table">
             <thead>
               <tr>
+                <th className="w-20">Race ID</th>
                 <th>Date</th>
                 <th>Circuit</th>
                 <th className="w-12"></th>
@@ -61,13 +62,14 @@ const RacesPage = () => {
                 const circuit = circuits?.find(c => c.id === race.circuit);
                 return (
                   <tr key={race.id}>
+                    <td className="text-muted-foreground">#{race.id}</td>
                     <td>
                       <Link to={`/races/${race.id}`} className="flex items-center gap-2 hover:text-primary">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         {race.date}
                       </Link>
                     </td>
-                    <td>{circuit?.name || race.circuit_name || 'Unknown Circuit'}</td>
+                    <td>{race.circuit_name || circuit?.name || 'Unknown Circuit'}</td>
                     <td>
                       <Link
                         to={`/races/${race.id}`}
