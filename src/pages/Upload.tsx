@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Upload as UploadIcon, Image, Check, X, AlertCircle, Plus, Trash2, ChevronDown, ChevronUp, ZoomIn } from 'lucide-react';
-import { api, OCRDriver, Lap, AuthError } from '@/lib/api';
+import { api, OCRDriver, Lap } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+
 interface DriverSelection extends OCRDriver {
   selected: boolean;
 }
@@ -92,7 +92,6 @@ const recalculateDriverTimes = (driver: OCRDriver): OCRDriver => {
 const UploadPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -103,18 +102,6 @@ const UploadPage = () => {
   const [raceDate, setRaceDate] = useState<Date>(new Date());
   const [imageExpanded, setImageExpanded] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, Record<number, string>>>({});
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate('/login', {
-        state: {
-          message: 'You need to login first to upload a new race',
-          from: '/upload'
-        }
-      });
-    }
-  }, [authLoading, isAuthenticated, navigate]);
 
   const { data: circuits } = useQuery({
     queryKey: ['circuits'],
@@ -132,16 +119,7 @@ const UploadPage = () => {
       setDrivers(driversWithSelection);
       setStep(2);
     },
-    onError: (error) => {
-      if (error instanceof AuthError) {
-        navigate('/login', {
-          state: {
-            message: 'Your session expired. Please login again.',
-            from: '/upload'
-          }
-        });
-        return;
-      }
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to process image. Please try again.',
@@ -185,16 +163,7 @@ const UploadPage = () => {
       });
       navigate(`/races/${data.id}`);
     },
-    onError: (error) => {
-      if (error instanceof AuthError) {
-        navigate('/login', {
-          state: {
-            message: 'Your session expired. Please login again.',
-            from: '/upload'
-          }
-        });
-        return;
-      }
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to save race results. Please try again.',
