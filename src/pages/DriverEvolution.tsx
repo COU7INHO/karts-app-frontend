@@ -70,12 +70,15 @@ const DriverEvolutionPage = () => {
       return (
         <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name === 'fastest_lap' ? 'Fastest Lap' : 'Average Lap'}:{' '}
-              {entry.payload[entry.name === 'fastest_lap' ? 'fastest_lap_display' : 'average_lap_display']}
-            </p>
-          ))}
+          {payload.map((entry: any, index: number) => {
+            const isFastestLap = entry.dataKey === 'fastest_lap';
+            return (
+              <p key={index} className="text-sm" style={{ color: entry.color }}>
+                {isFastestLap ? 'Fastest Lap' : 'Average Lap'}:{' '}
+                {entry.payload[isFastestLap ? 'fastest_lap_display' : 'average_lap_display']}
+              </p>
+            );
+          })}
         </div>
       );
     }
