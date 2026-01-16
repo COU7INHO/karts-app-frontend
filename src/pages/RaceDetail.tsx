@@ -45,15 +45,29 @@ const RaceDetailPage = () => {
     return mins * 60 + secs;
   };
 
-  // Sort results by total time (fastest first)
+  // Sort results by fastest lap (fastest first) - this determines race positions
   const sortedResults = useMemo(() => {
     if (!race) return [];
     return [...race.results].sort((a, b) => {
-      const timeA = timeToSeconds(a.total_time) ?? Infinity;
-      const timeB = timeToSeconds(b.total_time) ?? Infinity;
+      const timeA = timeToSeconds(a.fastest_lap) ?? Infinity;
+      const timeB = timeToSeconds(b.fastest_lap) ?? Infinity;
       return timeA - timeB;
     });
   }, [race]);
+
+  // Find the overall fastest lap in the race
+  const overallFastestLap = useMemo(() => {
+    if (!sortedResults.length) return null;
+    return sortedResults[0]?.fastest_lap || null;
+  }, [sortedResults]);
+
+  // Get medal for position
+  const getMedal = (position: number): string | null => {
+    if (position === 1) return "🥇";
+    if (position === 2) return "🥈";
+    if (position === 3) return "🥉";
+    return null;
+  };
 
   // Build lap-by-lap comparison data
   const lapComparisonData = useMemo(() => {
@@ -239,6 +253,10 @@ const RaceDetailPage = () => {
           <tbody>
             {sortedResults.map((result, index) => {
               const isExpanded = expandedDriver === result.driver_name;
+              const position = index + 1;
+              const medal = getMedal(position);
+              const isOverallFastest = result.fastest_lap === overallFastestLap;
+              
               return (
                 <>
                   <tr
@@ -247,11 +265,23 @@ const RaceDetailPage = () => {
                     onClick={() => setExpandedDriver(isExpanded ? null : result.driver_name)}
                   >
                     <td>
-                      <PositionBadge position={index + 1} />
+                      <div className="flex items-center gap-1">
+                        {medal ? (
+                          <span className="text-lg" title={`Position ${position}`}>{medal}</span>
+                        ) : (
+                          <PositionBadge position={position} />
+                        )}
+                      </div>
                     </td>
                     <td className="font-medium">{result.driver_name}</td>
                     <td className="lap-time">{result.total_time}</td>
-                    <td className="lap-time text-primary">{result.fastest_lap}</td>
+                    <td className={cn(
+                      'lap-time',
+                      isOverallFastest ? 'text-amber-500 font-bold' : 'text-primary'
+                    )}>
+                      {result.fastest_lap}
+                      {isOverallFastest && ' 🏆'}
+                    </td>
                     <td className="lap-time">{result.average_lap}</td>
                     <td>
                       {isExpanded ? (
