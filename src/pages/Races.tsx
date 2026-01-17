@@ -1,13 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { Flag, Calendar, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Flag, Calendar, ChevronRight, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const RacesPage = () => {
   const [circuitFilter, setCircuitFilter] = useState<string>('all');
+  const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   const { data: circuits } = useQuery({
     queryKey: ['circuits'],
@@ -19,6 +23,16 @@ const RacesPage = () => {
     queryFn: () => api.getRaces(circuitFilter === 'all' ? undefined : parseInt(circuitFilter)),
   });
 
+  const handleAddRaceClick = () => {
+    if (isLoggedIn) {
+      navigate('/upload');
+    } else {
+      navigate('/login', {
+        state: { message: 'You need to login first to upload a new race' }
+      });
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="page-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -27,19 +41,33 @@ const RacesPage = () => {
           <p className="page-subtitle">View all recorded race sessions</p>
         </div>
 
-        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
-          <SelectTrigger className="w-full md:w-64">
-            <SelectValue placeholder="Filter by circuit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Circuits</SelectItem>
-            {circuits?.map((circuit) => (
-              <SelectItem key={circuit.id} value={circuit.id.toString()}>
-                {circuit.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Select value={circuitFilter} onValueChange={setCircuitFilter}>
+            <SelectTrigger className="w-full sm:w-64">
+              <SelectValue placeholder="Filter by circuit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Circuits</SelectItem>
+              {circuits?.map((circuit) => (
+                <SelectItem key={circuit.id} value={circuit.id.toString()}>
+                  {circuit.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {isLoggedIn ? (
+            <Button onClick={handleAddRaceClick} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add New Race
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={handleAddRaceClick} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Login to Add Race
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
