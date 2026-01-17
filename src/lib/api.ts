@@ -1,6 +1,6 @@
 const API_BASE_URL = 'https://nonlaminated-subliminally-latanya.ngrok-free.dev/api';
 
-// Helper to add ngrok headers
+// Helper to add ngrok headers and credentials
 const getHeaders = (isFormData = false): HeadersInit => {
   const headers: HeadersInit = {
     'ngrok-skip-browser-warning': 'true',
@@ -84,7 +84,7 @@ export interface Race {
 
 export interface Lap {
   lap_number: number;
-  lap_time: string;
+  lap_time: string | null;
 }
 
 export interface RaceResult {
@@ -132,17 +132,31 @@ export interface OCRResponse {
   drivers: OCRDriver[];
 }
 
+// Custom error class for authentication errors
+export class AuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
 // API Functions
 export const api = {
   // Drivers
   getDrivers: async (): Promise<Driver[]> => {
-    const response = await fetch(`${API_BASE_URL}/drivers/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/drivers/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch drivers');
     return response.json();
   },
 
   getDriver: async (id: number): Promise<DriverDetail> => {
-    const response = await fetch(`${API_BASE_URL}/drivers/${id}/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/drivers/${id}/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch driver');
     return response.json();
   },
@@ -151,7 +165,10 @@ export const api = {
     const url = circuitId
       ? `${API_BASE_URL}/drivers/${id}/evolution/?circuit=${circuitId}`
       : `${API_BASE_URL}/drivers/${id}/evolution/`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetch(url, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch driver evolution');
     return response.json();
   },
@@ -160,26 +177,38 @@ export const api = {
     const url = circuitId
       ? `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}&circuit=${circuitId}`
       : `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetch(url, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to compare drivers');
     return response.json();
   },
 
   // Circuits
   getCircuits: async (): Promise<Circuit[]> => {
-    const response = await fetch(`${API_BASE_URL}/circuits/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/circuits/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch circuits');
     return response.json();
   },
 
   getCircuit: async (id: number): Promise<CircuitDetail> => {
-    const response = await fetch(`${API_BASE_URL}/circuits/${id}/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/circuits/${id}/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch circuit');
     return response.json();
   },
 
   getCircuitEvolution: async (id: number): Promise<CircuitEvolution> => {
-    const response = await fetch(`${API_BASE_URL}/circuits/${id}/evolution/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/circuits/${id}/evolution/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch circuit evolution');
     return response.json();
   },
@@ -189,13 +218,19 @@ export const api = {
     const url = circuitId 
       ? `${API_BASE_URL}/races/?circuit=${circuitId}` 
       : `${API_BASE_URL}/races/`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetch(url, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch races');
     return response.json();
   },
 
   getRace: async (id: number): Promise<RaceDetail> => {
-    const response = await fetch(`${API_BASE_URL}/races/${id}/`, { headers: getHeaders() });
+    const response = await fetch(`${API_BASE_URL}/races/${id}/`, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch race');
     return response.json();
   },
@@ -204,7 +239,10 @@ export const api = {
     const url = circuitId
       ? `${API_BASE_URL}/races/leaderboard/?circuit=${circuitId}`
       : `${API_BASE_URL}/races/leaderboard/`;
-    const response = await fetch(url, { headers: getHeaders() });
+    const response = await fetch(url, { 
+      headers: getHeaders(),
+      credentials: 'include',
+    });
     if (!response.ok) throw new Error('Failed to fetch leaderboard');
     return response.json();
   },
@@ -219,6 +257,7 @@ export const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/races/upload-image/`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
@@ -226,6 +265,10 @@ export const api = {
       });
       
       console.log('Response status:', response.status);
+      
+      if (response.status === 401) {
+        throw new AuthError('Your session expired. Please login again.');
+      }
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -247,9 +290,15 @@ export const api = {
   }): Promise<RaceDetail> => {
     const response = await fetch(`${API_BASE_URL}/races/save-results/`, {
       method: 'POST',
+      credentials: 'include',
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
+    
+    if (response.status === 401) {
+      throw new AuthError('Your session expired. Please login again.');
+    }
+    
     if (!response.ok) throw new Error('Failed to save race results');
     return response.json();
   },

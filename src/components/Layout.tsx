@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Upload, 
@@ -8,10 +8,15 @@ import {
   MapPin, 
   GitCompare,
   Menu,
-  X
+  X,
+  LogIn,
+  LogOut,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +24,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
-  { path: '/upload', label: 'Upload Race', icon: Upload },
+  { path: '/upload', label: 'Upload Race', icon: Upload, protected: true },
   { path: '/races', label: 'Races', icon: Flag },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/drivers', label: 'Drivers', icon: Users },
@@ -29,7 +34,21 @@ const navItems = [
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isLoggedIn, username, isLoading, logout } = useAuth();
+
+  const handleNavClick = (item: typeof navItems[0], e: React.MouseEvent) => {
+    if (item.protected && !isLoggedIn) {
+      e.preventDefault();
+      navigate('/login', { state: { message: 'You need to login first to upload a new race' } });
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,6 +65,7 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onClick={(e) => handleNavClick(item, e)}
                     className={cn(
                       'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                       isActive 
@@ -59,6 +79,39 @@ const Layout = ({ children }: LayoutProps) => {
                 );
               })}
             </nav>
+
+            {/* Auth Section - Desktop */}
+            <div className="hidden md:flex items-center gap-3">
+              {isLoading ? (
+                <div className="h-9 w-20 bg-secondary animate-pulse rounded-lg" />
+              ) : isLoggedIn ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="w-4 h-4" />
+                    <span>{username}</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleLogout}
+                    className="gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={() => navigate('/login')}
+                  className="gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Login
+                </Button>
+              )}
+            </div>
 
             {/* Mobile Menu Button */}
             <button
@@ -81,7 +134,10 @@ const Layout = ({ children }: LayoutProps) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      handleNavClick(item, e);
+                      setMobileMenuOpen(false);
+                    }}
                     className={cn(
                       'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
                       isActive 
@@ -94,6 +150,43 @@ const Layout = ({ children }: LayoutProps) => {
                   </Link>
                 );
               })}
+              
+              {/* Mobile Auth Section */}
+              <div className="pt-4 border-t border-border mt-4">
+                {isLoading ? (
+                  <div className="h-10 bg-secondary animate-pulse rounded-lg" />
+                ) : isLoggedIn ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-4 text-sm text-muted-foreground">
+                      <User className="w-4 h-4" />
+                      <span>Logged in as <strong>{username}</strong></span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="default" 
+                    className="w-full gap-2"
+                    onClick={() => {
+                      navigate('/login');
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login
+                  </Button>
+                )}
+              </div>
             </div>
           </nav>
         )}

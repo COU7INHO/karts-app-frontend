@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Upload as UploadIcon, Image, Check, X, AlertCircle, Plus, Trash2, ChevronDown, ChevronUp, ZoomIn } from 'lucide-react';
-import { api, OCRDriver, Lap } from '@/lib/api';
+import { api, OCRDriver, Lap, AuthError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
+import { useAuth } from '@/contexts/AuthContext';
 interface DriverSelection extends OCRDriver {
   selected: boolean;
 }
@@ -119,7 +119,11 @@ const UploadPage = () => {
       setDrivers(driversWithSelection);
       setStep(2);
     },
-    onError: () => {
+    onError: (error) => {
+      if (error instanceof AuthError) {
+        navigate('/login', { state: { message: error.message } });
+        return;
+      }
       toast({
         title: 'Error',
         description: 'Failed to process image. Please try again.',
@@ -163,7 +167,11 @@ const UploadPage = () => {
       });
       navigate(`/races/${data.id}`);
     },
-    onError: () => {
+    onError: (error) => {
+      if (error instanceof AuthError) {
+        navigate('/login', { state: { message: error.message } });
+        return;
+      }
       toast({
         title: 'Error',
         description: 'Failed to save race results. Please try again.',
