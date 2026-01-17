@@ -20,15 +20,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('=== CHECKING AUTH STATUS ===');
+      // Note: This request may fail due to CORS when credentials are included
+      // We try without credentials first for the status check
       const response = await fetch(`${API_BASE_URL}/auth/status/`, {
-        credentials: 'include',
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
       });
       
+      console.log('Auth status response:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('Auth status data:', data);
         if (data.authenticated) {
           setIsLoggedIn(true);
           setUsername(data.username);
@@ -37,11 +42,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUsername(null);
         }
       } else {
+        console.log('Auth status check failed with status:', response.status);
         setIsLoggedIn(false);
         setUsername(null);
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
+      // Don't block the app if auth check fails - just assume not logged in
       setIsLoggedIn(false);
       setUsername(null);
     } finally {
@@ -51,9 +58,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (usernameInput: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log('=== LOGIN ATTEMPT STARTED ===');
+      console.log('Username:', usernameInput);
+      console.log('Sending POST request to:', `${API_BASE_URL}/auth/login/`);
+      
       const response = await fetch(`${API_BASE_URL}/auth/login/`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'ngrok-skip-browser-warning': 'true',
@@ -61,30 +71,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ username: usernameInput, password }),
       });
 
+      console.log('Response received. Status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('LOGIN SUCCESS:', data);
         setIsLoggedIn(true);
         setUsername(data.username);
         return { success: true };
       } else {
         const data = await response.json().catch(() => ({}));
+        console.log('LOGIN FAILED:', data);
         return { success: false, error: data.error || 'Invalid username or password' };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error('LOGIN ERROR:', error);
+      return { success: false, error: 'Network error. Please check if the backend server is running.' };
     }
   };
 
   const logout = async () => {
     try {
+      console.log('=== LOGGING OUT ===');
       await fetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
       });
+      console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
