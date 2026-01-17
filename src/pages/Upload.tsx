@@ -15,9 +15,27 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+
 interface DriverSelection extends OCRDriver {
   selected: boolean;
 }
+
+// Route protection hook
+const useRequireAuth = () => {
+  const { isLoggedIn, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      navigate('/login', {
+        state: { message: 'You need to login first to upload a new race' },
+        replace: true
+      });
+    }
+  }, [isLoggedIn, isLoading, navigate]);
+
+  return { isLoggedIn, isLoading };
+};
 
 // Convert "0:36.195" to seconds (36.195)
 const timeToSeconds = (timeString: string | null): number | null => {
@@ -94,6 +112,9 @@ const UploadPage = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Route protection - redirect if not logged in
+  const { isLoggedIn, isLoading: authLoading } = useRequireAuth();
+  
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -107,6 +128,19 @@ const UploadPage = () => {
     queryKey: ['circuits'],
     queryFn: () => api.getCircuits(),
   });
+
+  // Don't render anything if not logged in or still checking auth
+  if (authLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => api.uploadImage(file),

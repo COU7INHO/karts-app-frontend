@@ -146,7 +146,6 @@ export const api = {
   getDrivers: async (): Promise<Driver[]> => {
     const response = await fetch(`${API_BASE_URL}/drivers/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch drivers');
     return response.json();
@@ -155,7 +154,6 @@ export const api = {
   getDriver: async (id: number): Promise<DriverDetail> => {
     const response = await fetch(`${API_BASE_URL}/drivers/${id}/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch driver');
     return response.json();
@@ -167,7 +165,6 @@ export const api = {
       : `${API_BASE_URL}/drivers/${id}/evolution/`;
     const response = await fetch(url, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch driver evolution');
     return response.json();
@@ -179,7 +176,6 @@ export const api = {
       : `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}`;
     const response = await fetch(url, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to compare drivers');
     return response.json();
@@ -189,7 +185,6 @@ export const api = {
   getCircuits: async (): Promise<Circuit[]> => {
     const response = await fetch(`${API_BASE_URL}/circuits/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch circuits');
     return response.json();
@@ -198,7 +193,6 @@ export const api = {
   getCircuit: async (id: number): Promise<CircuitDetail> => {
     const response = await fetch(`${API_BASE_URL}/circuits/${id}/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch circuit');
     return response.json();
@@ -207,7 +201,6 @@ export const api = {
   getCircuitEvolution: async (id: number): Promise<CircuitEvolution> => {
     const response = await fetch(`${API_BASE_URL}/circuits/${id}/evolution/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch circuit evolution');
     return response.json();
@@ -220,7 +213,6 @@ export const api = {
       : `${API_BASE_URL}/races/`;
     const response = await fetch(url, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch races');
     return response.json();
@@ -229,7 +221,6 @@ export const api = {
   getRace: async (id: number): Promise<RaceDetail> => {
     const response = await fetch(`${API_BASE_URL}/races/${id}/`, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch race');
     return response.json();
@@ -241,7 +232,6 @@ export const api = {
       : `${API_BASE_URL}/races/leaderboard/`;
     const response = await fetch(url, { 
       headers: getHeaders(),
-      credentials: 'include',
     });
     if (!response.ok) throw new Error('Failed to fetch leaderboard');
     return response.json();
