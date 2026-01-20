@@ -1,10 +1,8 @@
-const API_BASE_URL = 'https://nonlaminated-subliminally-latanya.ngrok-free.dev/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'https://karts.tiago-coutinho.com'}/api`;
 
-// Helper to add ngrok headers and credentials
+// Helper to get headers for API calls
 const getHeaders = (isFormData = false): HeadersInit => {
-  const headers: HeadersInit = {
-    'ngrok-skip-browser-warning': 'true',
-  };
+  const headers: HeadersInit = {};
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
   }
@@ -248,9 +246,6 @@ export const api = {
       const response = await fetch(`${API_BASE_URL}/races/upload-image/`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
         body: formData,
       });
       
