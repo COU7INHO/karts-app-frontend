@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-const API_BASE_URL = 'https://nonlaminated-subliminally-latanya.ngrok-free.dev/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'https://karts.tiago-coutinho.com'}/api`;
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -21,12 +21,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const checkAuthStatus = async () => {
     try {
       console.log('=== CHECKING AUTH STATUS ===');
-      // Note: This request may fail due to CORS when credentials are included
-      // We try without credentials first for the status check
       const response = await fetch(`${API_BASE_URL}/auth/status/`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
+        credentials: 'include',
       });
       
       console.log('Auth status response:', response.status);
@@ -64,9 +60,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       const response = await fetch(`${API_BASE_URL}/auth/login/`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({ username: usernameInput, password }),
       });
@@ -95,9 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('=== LOGGING OUT ===');
       await fetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
-        headers: {
-          'ngrok-skip-browser-warning': 'true',
-        },
+        credentials: 'include',
       });
       console.log('Logout successful');
     } catch (error) {
