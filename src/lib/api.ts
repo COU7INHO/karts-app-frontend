@@ -1,10 +1,28 @@
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'https://karts.tiago-coutinho.com'}/api`;
 
+// Function to get CSRF token from cookies
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+function getCSRFToken(): string | null {
+  return getCookie('csrftoken');
+}
+
 // Helper to get headers for API calls
-const getHeaders = (isFormData = false): HeadersInit => {
-  const headers: HeadersInit = {};
+const getHeaders = (isFormData = false, includeCSRF = false): HeadersInit => {
+  const headers: Record<string, string> = {};
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
+  }
+  if (includeCSRF) {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
   }
   return headers;
 };
@@ -243,9 +261,16 @@ export const api = {
     console.log('File:', file.name, file.type, file.size);
     
     try {
+      const csrfToken = getCSRFToken();
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/races/upload-image/`, {
         method: 'POST',
         credentials: 'include',
+        headers,
         body: formData,
       });
       
@@ -276,7 +301,7 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/races/save-results/`, {
       method: 'POST',
       credentials: 'include',
-      headers: getHeaders(),
+      headers: getHeaders(false, true),
       body: JSON.stringify(data),
     });
     
