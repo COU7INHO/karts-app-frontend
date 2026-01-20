@@ -2,6 +2,18 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'https://karts.tiago-coutinho.com'}/api`;
 
+// Function to get CSRF token from cookies
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+function getCSRFToken(): string | null {
+  return getCookie('csrftoken');
+}
+
 interface AuthContextType {
   isLoggedIn: boolean;
   username: string | null;
@@ -56,14 +68,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('=== LOGIN ATTEMPT STARTED ===');
       console.log('Username:', usernameInput);
+      
+      // First, ensure we have a CSRF token by hitting the status endpoint
+      console.log('Fetching CSRF token...');
+      await fetch(`${API_BASE_URL}/auth/status/`, {
+        credentials: 'include',
+      });
+      
+      const csrfToken = getCSRFToken();
+      console.log('CSRF Token obtained:', csrfToken ? 'Yes' : 'No');
+      
       console.log('Sending POST request to:', `${API_BASE_URL}/auth/login/`);
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
       
       const response = await fetch(`${API_BASE_URL}/auth/login/`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ username: usernameInput, password }),
       });
 
@@ -89,9 +117,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       console.log('=== LOGGING OUT ===');
+      const csrfToken = getCSRFToken();
+      
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
       await fetch(`${API_BASE_URL}/auth/logout/`, {
         method: 'POST',
         credentials: 'include',
+        headers,
       });
       console.log('Logout successful');
     } catch (error) {
