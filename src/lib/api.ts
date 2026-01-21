@@ -226,7 +226,7 @@ export const api = {
   getRaces: async (circuitId?: number, driverId?: number): Promise<Race[]> => {
     const params = new URLSearchParams();
     if (circuitId) params.append('circuit', circuitId.toString());
-    if (driverId) params.append('driver', driverId.toString());
+    if (driverId) params.append('drivers', driverId.toString());
     const queryString = params.toString();
     const url = queryString 
       ? `${API_BASE_URL}/races/?${queryString}` 
