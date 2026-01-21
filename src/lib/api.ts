@@ -223,9 +223,13 @@ export const api = {
   },
 
   // Races
-  getRaces: async (circuitId?: number): Promise<Race[]> => {
-    const url = circuitId 
-      ? `${API_BASE_URL}/races/?circuit=${circuitId}` 
+  getRaces: async (circuitId?: number, driverId?: number): Promise<Race[]> => {
+    const params = new URLSearchParams();
+    if (circuitId) params.append('circuit', circuitId.toString());
+    if (driverId) params.append('driver', driverId.toString());
+    const queryString = params.toString();
+    const url = queryString 
+      ? `${API_BASE_URL}/races/?${queryString}` 
       : `${API_BASE_URL}/races/`;
     const response = await fetch(url, { 
       headers: getHeaders(),

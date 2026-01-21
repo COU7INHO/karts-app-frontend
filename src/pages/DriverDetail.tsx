@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Flag, Gauge, TrendingUp, GitCompare } from 'lucide-react';
+import { ArrowLeft, Flag, Gauge, TrendingUp, GitCompare, Calendar, MapPin, Users, ChevronRight, Trophy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format } from 'date-fns';
 
 const DriverDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +14,12 @@ const DriverDetailPage = () => {
   const { data: driver, isLoading, error } = useQuery({
     queryKey: ['driver', id],
     queryFn: () => api.getDriver(parseInt(id!)),
+    enabled: !!id,
+  });
+
+  const { data: driverRaces, isLoading: isLoadingRaces } = useQuery({
+    queryKey: ['driver-races', id],
+    queryFn: () => api.getRaces(undefined, parseInt(id!)),
     enabled: !!id,
   });
 
@@ -89,6 +97,61 @@ const DriverDetailPage = () => {
           </Button>
         </Link>
       </div>
+
+      {/* Race History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-primary" />
+            Race History
+            {driverRaces && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({driverRaces.length} {driverRaces.length === 1 ? 'race' : 'races'})
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRaces ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : !driverRaces || driverRaces.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Flag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No races found for this driver</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {driverRaces.map((race) => (
+                <Link
+                  key={race.id}
+                  to={`/races/${race.id}`}
+                  className="block group"
+                >
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span className="font-medium text-foreground">
+                          {format(new Date(race.date), 'dd MMM yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="w-4 h-4" />
+                        <span>{race.circuit_name || 'Unknown Circuit'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
