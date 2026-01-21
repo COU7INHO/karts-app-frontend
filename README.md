@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
+# Speed Champions 🏁
 
-## Project info
+A modern web application for tracking and analyzing karting race results, built to help drivers improve their performance through detailed statistics and insights.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Live Site:** [https://karts.tiago-coutinho.com](https://karts.tiago-coutinho.com)
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+Speed Champions transforms race timing sheets into actionable insights. Upload race results, track driver performance over time, and discover patterns that lead to faster lap times. Whether you're competing with friends or training for competitions, Speed Champions provides the analytics you need to stay ahead of the pack.
 
-**Use Lovable**
+## Key Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 📸 Smart Race Upload
+Upload race timing sheet images and let AI-powered OCR automatically extract results. No more manual data entry—just snap a photo and go.
 
-Changes made via Lovable will be committed automatically to this repo.
+### 👥 Driver Profiles
+Track individual driver statistics including:
+- Total races and laps completed
+- Performance evolution over time
+- Personal best lap times
+- Average lap time trends
+- Complete race history
 
-**Use your preferred IDE**
+### 🏆 Leaderboards
+View real-time rankings across all drivers. See who's dominating the track and where you stand in the competition.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📊 Performance Analytics
+- **Evolution Charts**: Visualize lap time improvements across races
+- **Driver Comparisons**: Compare up to 4 drivers side-by-side
+- **Circuit-Specific Stats**: Filter performance by specific tracks
+- **Historical Trends**: Track progress over time
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 🗺️ Circuit Management
+Organize races by circuit, track venue-specific records, and analyze performance at different tracks.
 
-Follow these steps:
+### 📱 Responsive Design
+Access your race data anywhere—desktop, tablet, or mobile. The interface adapts seamlessly to any screen size.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Technology Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **React** with TypeScript
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - UI components
+- **TanStack Query** - Data fetching
+- Built with [Lovable](https://lovable.dev)
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Backend
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+This frontend connects to a Django REST API backend.
+
+**Backend Repository:** [https://github.com/COU7INHO/karst-app-backend](https://github.com/COU7INHO/karst-app-backend)
+
+## Getting Started
+
+```bash
+# Clone and install
+git clone https://github.com/COU7INHO/speedway-stats.git
+cd speedway-stats
+npm install
+
+# Run development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+speedway-stats/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── contexts/       # React context providers (Auth, etc)
+│   ├── hooks/          # Custom React hooks
+│   ├── lib/            # API client and utilities
+│   ├── pages/          # Page components (routes)
+│   └── main.tsx        # Application entry point
+├── public/             # Static assets
+└── index.html          # HTML template
+```
 
-**Use GitHub Codespaces**
+## Contributing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+This is a personal project, but suggestions and feedback are welcome! Feel free to open an issue for bugs or feature requests.
 
-## What technologies are used for this project?
+## License
 
-This project is built with:
+Private project - All rights reserved
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+**Live Application:** [karts.tiago-coutinho.com](https://karts.tiago-coutinho.com)
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+*Track. Analyze. Improve. Race faster with Speed Champions.* 🏎️💨
