@@ -1,17 +1,18 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  Upload, 
-  Flag, 
-  Trophy, 
-  Users, 
-  MapPin, 
+import {
+  Home,
+  Upload,
+  Flag,
+  Trophy,
+  Users,
+  MapPin,
   GitCompare,
   Menu,
   X,
   LogIn,
   LogOut,
-  User
+  User,
+  Medal,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/upload', label: 'Upload Race', icon: Upload, protected: true },
   { path: '/races', label: 'Races', icon: Flag },
+  { path: '/championships', label: 'Championships', icon: Medal },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/drivers', label: 'Drivers', icon: Users },
   { path: '/circuits', label: 'Circuits', icon: MapPin },

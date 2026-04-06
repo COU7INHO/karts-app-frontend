@@ -9,16 +9,11 @@ import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const DRIVER_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--accent))',
-  'hsl(142, 76%, 36%)',
-  'hsl(48, 96%, 53%)',
-  'hsl(262, 83%, 58%)',
-  'hsl(199, 89%, 48%)',
-  'hsl(315, 70%, 50%)',
-  'hsl(25, 95%, 53%)',
-];
+// Uses the golden angle (137.5°) to distribute hues evenly — guarantees no repetition
+const getDriverColor = (index: number): string => {
+  const hue = Math.round((index * 137.508) % 360);
+  return `hsl(${hue}, 70%, 55%)`;
+};
 
 const RaceDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -337,7 +332,7 @@ const RaceDetailPage = () => {
             <div className="flex flex-wrap gap-2">
               {driverNames.map((driverName, index) => {
                 const isSelected = selectedDrivers.has(driverName);
-                const color = DRIVER_COLORS[index % DRIVER_COLORS.length];
+                const color = getDriverColor(index);
                 const isLastSelected = isSelected && selectedDrivers.size === 1;
                 
                 return (
@@ -396,9 +391,9 @@ const RaceDetailPage = () => {
                       type="monotone"
                       dataKey={driverName}
                       name={driverName}
-                      stroke={DRIVER_COLORS[originalIndex % DRIVER_COLORS.length]}
+                      stroke={getDriverColor(originalIndex)}
                       strokeWidth={2}
-                      dot={{ fill: DRIVER_COLORS[originalIndex % DRIVER_COLORS.length], r: 4 }}
+                      dot={{ fill: getDriverColor(originalIndex), r: 4 }}
                       connectNulls
                     />
                   );

@@ -17,6 +17,8 @@ import ComparePage from "./pages/Compare";
 import CircuitsPage from "./pages/Circuits";
 import CircuitDetailPage from "./pages/CircuitDetail";
 import LoginPage from "./pages/Login";
+import ChampionshipsPage from "./pages/Championships";
+import ChampionshipDetailPage from "./pages/ChampionshipDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/circuits" element={<CircuitsPage />} />
               <Route path="/circuits/:id" element={<CircuitDetailPage />} />
+              <Route path="/championships" element={<ChampionshipsPage />} />
+              <Route path="/championships/:id" element={<ChampionshipDetailPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

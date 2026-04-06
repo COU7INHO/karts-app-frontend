@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Flag, Users, MapPin, Upload, Calendar, ChevronRight } from 'lucide-react';
+import { Flag, Users, MapPin, Upload, Calendar, ChevronRight, Medal } from 'lucide-react';
 import { api } from '@/lib/api';
 import StatCard from '@/components/StatCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -40,14 +40,22 @@ const Index = () => {
           <p className="text-muted-foreground mt-4 max-w-xl text-lg">
             Track your karting performance, analyze lap times, and compete with friends on the leaderboard.
           </p>
-          {isLoggedIn && (
-            <Link to="/upload">
-              <Button className="mt-6 gap-2 racing-gradient hover:opacity-90">
-                <Upload className="w-4 h-4" />
-                Upload New Race Results
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/championships">
+              <Button className="gap-2 racing-gradient hover:opacity-90">
+                <Medal className="w-4 h-4" />
+                View Championships
               </Button>
             </Link>
-          )}
+            {isLoggedIn && (
+              <Link to="/upload">
+                <Button variant="outline" className="gap-2">
+                  <Upload className="w-4 h-4" />
+                  Upload New Race Results
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 

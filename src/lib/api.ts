@@ -148,6 +148,34 @@ export interface OCRResponse {
   drivers: OCRDriver[];
 }
 
+export interface Championship {
+  id: number;
+  name: string;
+  driver_count: number;
+  race_count: number;
+  created_at: string;
+}
+
+export interface ChampionshipStanding {
+  position: number;
+  driver_id: number;
+  driver_name: string;
+  total_points: number;
+  fastest_lap_points: number;
+  average_lap_points: number;
+  bonus_points: number;
+  races_participated: number;
+}
+
+export interface ChampionshipDetail {
+  id: number;
+  name: string;
+  created_at: string;
+  drivers: { id: number; name: string }[];
+  races: { id: number; date: string; circuit_name: string }[];
+  standings: ChampionshipStanding[];
+}
+
 // Custom error class for authentication errors
 export class AuthError extends Error {
   constructor(message: string) {
@@ -295,6 +323,54 @@ export const api = {
       console.error('Upload error:', error);
       throw error;
     }
+  },
+
+  // Championships
+  getChampionships: async (): Promise<Championship[]> => {
+    const response = await fetch(`${API_BASE_URL}/championships/`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch championships');
+    return response.json();
+  },
+
+  getChampionship: async (id: number): Promise<ChampionshipDetail> => {
+    const response = await fetch(`${API_BASE_URL}/championships/${id}/`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch championship');
+    return response.json();
+  },
+
+  createChampionship: async (data: { name: string; driver_ids: number[]; race_ids: number[] }): Promise<ChampionshipDetail> => {
+    const response = await fetch(`${API_BASE_URL}/championships/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: getHeaders(false, true),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create championship');
+    return response.json();
+  },
+
+  updateChampionship: async (id: number, data: { name?: string; driver_ids?: number[]; race_ids?: number[] }): Promise<ChampionshipDetail> => {
+    const response = await fetch(`${API_BASE_URL}/championships/${id}/`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: getHeaders(false, true),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update championship');
+    return response.json();
+  },
+
+  deleteChampionship: async (id: number): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/championships/${id}/`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: getHeaders(false, true),
+    });
+    if (!response.ok) throw new Error('Failed to delete championship');
   },
 
   saveRaceResults: async (data: {
