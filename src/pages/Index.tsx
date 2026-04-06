@@ -5,8 +5,10 @@ import { api } from '@/lib/api';
 import StatCard from '@/components/StatCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
+  const { isLoggedIn } = useAuth();
   const { data: races, isLoading: racesLoading } = useQuery({
     queryKey: ['races'],
     queryFn: () => api.getRaces(),
@@ -38,12 +40,14 @@ const Index = () => {
           <p className="text-muted-foreground mt-4 max-w-xl text-lg">
             Track your karting performance, analyze lap times, and compete with friends on the leaderboard.
           </p>
-          <Link to="/upload">
-            <Button className="mt-6 gap-2 racing-gradient hover:opacity-90">
-              <Upload className="w-4 h-4" />
-              Upload New Race Results
-            </Button>
-          </Link>
+          {isLoggedIn && (
+            <Link to="/upload">
+              <Button className="mt-6 gap-2 racing-gradient hover:opacity-90">
+                <Upload className="w-4 h-4" />
+                Upload New Race Results
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -116,11 +120,13 @@ const Index = () => {
           <div className="text-center py-12 bg-card rounded-lg border border-border">
             <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No races recorded yet</p>
-            <Link to="/upload">
-              <Button variant="outline" className="mt-4">
-                Upload your first race
-              </Button>
-            </Link>
+            {isLoggedIn && (
+              <Link to="/upload">
+                <Button variant="outline" className="mt-4">
+                  Upload your first race
+                </Button>
+              </Link>
+            )}
           </div>
         )}
       </div>

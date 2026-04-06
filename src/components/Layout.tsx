@@ -38,6 +38,8 @@ const Layout = ({ children }: LayoutProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isLoggedIn, username, isLoading, logout } = useAuth();
 
+  const visibleNavItems = navItems.filter(item => !item.protected || isLoggedIn);
+
   const handleNavClick = (item: typeof navItems[0], e: React.MouseEvent) => {
     if (item.protected && !isLoggedIn) {
       e.preventDefault();
@@ -58,7 +60,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center justify-between h-16">
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
@@ -127,7 +129,7 @@ const Layout = ({ children }: LayoutProps) => {
         {mobileMenuOpen && (
           <nav className="md:hidden border-t border-border bg-background animate-slide-in">
             <div className="container mx-auto px-4 py-4 space-y-1">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
