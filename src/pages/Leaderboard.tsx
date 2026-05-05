@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 
 const LeaderboardTable = ({ entries, type }: { entries: LeaderboardEntry[]; type: 'fastest' | 'average' }) => (
   <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div className="overflow-x-auto">
     <table className="racing-table">
       <thead>
         <tr>
@@ -40,6 +41,7 @@ const LeaderboardTable = ({ entries, type }: { entries: LeaderboardEntry[]; type
         ))}
       </tbody>
     </table>
+    </div>
   </div>
 );
 

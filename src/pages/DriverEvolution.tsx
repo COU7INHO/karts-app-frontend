@@ -194,6 +194,7 @@ const DriverEvolutionPage = () => {
       {/* Data Table */}
       {evolution.evolution.length > 0 && (
         <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="racing-table">
             <thead>
               <tr>
@@ -217,6 +218,7 @@ const DriverEvolutionPage = () => {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

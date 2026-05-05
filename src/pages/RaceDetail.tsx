@@ -234,6 +234,7 @@ const RaceDetailPage = () => {
       {/* Results Table */}
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <h3 className="font-display text-xl tracking-wider p-4 border-b border-border">RACE RESULTS</h3>
+        <div className="overflow-x-auto">
         <table className="racing-table">
           <thead>
             <tr>
@@ -319,6 +320,7 @@ const RaceDetailPage = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Lap Time Progression Chart */}

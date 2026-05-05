@@ -190,6 +190,7 @@ const ComparePage = () => {
         <>
           {/* Stats Table */}
           <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="racing-table">
               <thead>
                 <tr>
@@ -219,6 +220,7 @@ const ComparePage = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Charts */}

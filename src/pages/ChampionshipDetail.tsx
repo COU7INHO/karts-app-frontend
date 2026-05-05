@@ -322,22 +322,22 @@ const ChampionshipDetailPage = () => {
                     <th className="w-16">Pos</th>
                     <th>Driver</th>
                     <th>Total Pts</th>
-                    <th className="hidden sm:table-cell">
+                    <th className="whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Zap className="w-3.5 h-3.5" /> Fastest
                       </span>
                     </th>
-                    <th className="hidden sm:table-cell">
+                    <th className="whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Star className="w-3.5 h-3.5" /> Average
                       </span>
                     </th>
-                    <th className="hidden md:table-cell">
+                    <th className="whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Gift className="w-3.5 h-3.5" /> Bonus
                       </span>
                     </th>
-                    <th className="hidden md:table-cell">Races</th>
+                    <th>Races</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -364,20 +364,20 @@ const ChampionshipDetailPage = () => {
                         <td className={cn('font-bold text-lg tabular-nums', isLeader && 'text-primary')}>
                           {s.total_points}
                         </td>
-                        <td className="text-muted-foreground tabular-nums hidden sm:table-cell">
+                        <td className="text-muted-foreground tabular-nums">
                           {s.fastest_lap_points}
                         </td>
-                        <td className="text-muted-foreground tabular-nums hidden sm:table-cell">
+                        <td className="text-muted-foreground tabular-nums">
                           {s.average_lap_points}
                         </td>
-                        <td className="hidden md:table-cell">
+                        <td>
                           {s.bonus_points > 0 ? (
                             <span className="text-amber-500 font-medium">+{s.bonus_points}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="text-muted-foreground hidden md:table-cell">
+                        <td className="text-muted-foreground">
                           {s.races_participated}
                         </td>
                       </tr>
