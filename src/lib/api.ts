@@ -304,6 +304,8 @@ export const api = {
         credentials: 'include',
         headers,
         body: formData,
+        // OCR via Mistral is slow; keep this above the nginx proxy_read_timeout (200s).
+        signal: AbortSignal.timeout(220000),
       });
       
       console.log('Response status:', response.status);
@@ -321,6 +323,9 @@ export const api = {
       return response.json();
     } catch (error) {
       console.error('Upload error:', error);
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new Error('Image processing took too long. Please try again with a clearer or smaller image.');
+      }
       throw error;
     }
   },
