@@ -15,6 +15,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/racing/PageHeader';
 
 interface DriverSelection extends OCRDriver {
   selected: boolean;
@@ -107,6 +108,8 @@ const recalculateDriverTimes = (driver: OCRDriver): OCRDriver => {
   };
 };
 
+const STEPS = ['Upload photo', 'Pick drivers', 'Check laps', 'Save'];
+
 const UploadPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -128,19 +131,6 @@ const UploadPage = () => {
     queryKey: ['circuits'],
     queryFn: () => api.getCircuits(),
   });
-
-  // Don't render anything if not logged in or still checking auth
-  if (authLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    return null;
-  }
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => api.uploadImage(file),
@@ -196,8 +186,8 @@ const UploadPage = () => {
     },
     onSuccess: (data) => {
       toast({
-        title: 'Success!',
-        description: 'Race results saved successfully.',
+        title: 'Race saved',
+        description: 'The results are now in the standings.',
       });
       navigate(`/races/${data.id}`);
     },
@@ -213,6 +203,19 @@ const UploadPage = () => {
       });
     },
   });
+
+  // Don't render anything if not logged in or still checking auth
+  if (authLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -381,43 +384,38 @@ const UploadPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-      <div className="page-header">
-        <h1 className="page-title">UPLOAD RACE RESULTS</h1>
-        <p className="page-subtitle">Upload a race result image to extract and save driver data</p>
-      </div>
+      <PageHeader
+        title="Upload a race"
+        subtitle="Take a photo of the timing sheet. The laps are read automatically, then you check them before saving."
+      />
 
       {/* Progress Steps */}
-      <div className="flex items-center gap-4">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
-                step >= s ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-              )}
-            >
-              {step > s ? <Check className="w-4 h-4" /> : s}
-            </div>
-            <span className={cn(
-              'text-sm hidden sm:block',
-              step >= s ? 'text-foreground' : 'text-muted-foreground'
-            )}>
-              {s === 1 && 'Upload Image'}
-              {s === 2 && 'Select Drivers'}
-              {s === 3 && 'Validate Laps'}
-              {s === 4 && 'Save Results'}
-            </span>
-            {s < 4 && <div className="w-8 h-0.5 bg-border" />}
-          </div>
-        ))}
-      </div>
+      <ol className="grid grid-cols-4 gap-1.5">
+        {STEPS.map((label, i) => {
+          const s = i + 1;
+          return (
+            <li key={label} className="space-y-2">
+              <div
+                className={cn(
+                  'h-1.5 -skew-x-12 transition-colors',
+                  step > s ? 'bg-primary' : step === s ? 'bg-primary animate-pulse' : 'bg-secondary'
+                )}
+              />
+              <p className={cn('text-xs sm:text-sm', step >= s ? 'text-foreground' : 'text-muted-foreground')}>
+                <span className="lap-time mr-1">{s}</span>
+                <span className="hidden sm:inline">{label}</span>
+              </p>
+            </li>
+          );
+        })}
+      </ol>
 
       {/* Step 1: Upload Image */}
       {step === 1 && (
         <div className="space-y-6">
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors cursor-pointer group"
+            className="border-2 border-dashed border-border rounded-sm p-8 md:p-12 bg-card text-center hover:border-primary/50 transition-colors cursor-pointer group"
           >
             {imagePreview ? (
               <div className="space-y-4">
@@ -430,11 +428,9 @@ const UploadPage = () => {
               </div>
             ) : (
               <>
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
-                  <Image className="w-8 h-8 text-primary" />
-                </div>
-                <p className="text-lg font-medium">Click to upload race results image</p>
-                <p className="text-sm text-muted-foreground mt-2">Supports JPG, JPEG, PNG</p>
+                <Image className="w-10 h-10 text-primary mx-auto mb-4" />
+                <p className="display uppercase text-2xl">Choose the timing sheet photo</p>
+                <p className="text-sm text-muted-foreground mt-2">JPG or PNG</p>
               </>
             )}
           </div>
@@ -462,17 +458,17 @@ const UploadPage = () => {
               <Button
                 onClick={handleExtractData}
                 disabled={uploadMutation.isPending}
-                className="racing-gradient"
+               
               >
                 {uploadMutation.isPending ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
-                    Processing...
+                    Reading laps, this can take a minute…
                   </>
                 ) : (
                   <>
                     <UploadIcon className="w-4 h-4 mr-2" />
-                    Extract Data
+                    Read lap times
                   </>
                 )}
               </Button>
@@ -490,23 +486,23 @@ const UploadPage = () => {
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={selectAll}>
-                Select All
+                Select all
               </Button>
               <Button variant="outline" size="sm" onClick={deselectAll}>
-                Deselect All
+                Clear selection
               </Button>
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="panel overflow-x-auto">
             <table className="racing-table">
               <thead>
                 <tr>
                   <th className="w-12"></th>
-                  <th>Driver Name</th>
+                  <th>Driver</th>
                   <th>Laps</th>
-                  <th>Fastest Lap</th>
-                  <th>Average Lap</th>
+                  <th>Fastest</th>
+                  <th>Average</th>
                 </tr>
               </thead>
               <tbody>
@@ -527,7 +523,7 @@ const UploadPage = () => {
                     </td>
                     <td className="font-medium">{driver.name}</td>
                     <td>{driver.laps.length}</td>
-                    <td className="lap-time text-primary">{driver.fastest_lap}</td>
+                    <td className="lap-time t-purple">{driver.fastest_lap}</td>
                     <td className="lap-time">{driver.average_lap}</td>
                   </tr>
                 ))}
@@ -553,7 +549,7 @@ const UploadPage = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Race Date</label>
+              <label className="text-sm font-medium">Race date</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start">
@@ -580,9 +576,9 @@ const UploadPage = () => {
             <Button
               onClick={() => setStep(3)}
               disabled={!canSave}
-              className="racing-gradient"
+             
             >
-              Continue to Validate
+              Check lap times
             </Button>
           </div>
         </div>
@@ -597,7 +593,7 @@ const UploadPage = () => {
               <Button variant="outline" className="w-full justify-between">
                 <span className="flex items-center gap-2">
                   <ZoomIn className="w-4 h-4" />
-                  {imageExpanded ? 'Hide Original Image' : 'Show Original Image'}
+                  {imageExpanded ? 'Hide the photo' : 'Show the photo'}
                 </span>
                 {imageExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
@@ -626,13 +622,13 @@ const UploadPage = () => {
             {selectedDrivers.map((driver) => {
               const originalIndex = drivers.findIndex(d => d.name === driver.name);
               return (
-                <div key={driver.name} className="bg-card rounded-lg border border-border overflow-hidden">
+                <div key={driver.name} className="panel overflow-hidden">
                   <div className="bg-secondary/50 p-4 border-b border-border">
-                    <h4 className="font-display text-lg tracking-wider">{driver.name.toUpperCase()}</h4>
+                    <h4 className="display uppercase text-2xl">{driver.name}</h4>
                     <div className="text-sm text-muted-foreground mt-1">
-                      {driver.laps.filter(l => l.lap_time).length} valid laps | 
-                      Fastest: <span className="text-primary">{driver.fastest_lap || 'N/A'}</span> | 
-                      Average: {driver.average_lap || 'N/A'}
+                      {driver.laps.filter(l => l.lap_time).length} valid laps, fastest{' '}
+                      <span className="lap-time t-purple">{driver.fastest_lap || 'N/A'}</span>, average{' '}
+                      <span className="lap-time">{driver.average_lap || 'N/A'}</span>
                     </div>
                   </div>
                   <div className="p-4">
@@ -649,7 +645,7 @@ const UploadPage = () => {
                                 onBlur={(e) => handleLapTimeBlur(originalIndex, lapIndex, e.target.value)}
                                 placeholder="0:00.000"
                                 className={cn(
-                                  'h-9 text-sm font-mono',
+                                  'h-9 text-sm lap-time',
                                   error && 'border-destructive focus-visible:ring-destructive',
                                   !lap.lap_time && 'text-muted-foreground bg-secondary/30'
                                 )}
@@ -678,7 +674,7 @@ const UploadPage = () => {
                       onClick={() => addLap(originalIndex)}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Missing Lap
+                      Add missing lap
                     </Button>
                   </div>
                 </div>
@@ -692,9 +688,9 @@ const UploadPage = () => {
             </Button>
             <Button
               onClick={handleProceedToConfirm}
-              className="racing-gradient"
+             
             >
-              Save Race Results →
+              Review and save
             </Button>
           </div>
         </div>
@@ -703,8 +699,8 @@ const UploadPage = () => {
       {/* Step 4: Confirm & Save */}
       {step === 4 && (
         <div className="space-y-6">
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="font-display text-xl tracking-wider mb-4">CONFIRM RACE DETAILS</h3>
+          <div className="panel p-4 md:p-6">
+            <h3 className="section-title mb-4">Confirm the race</h3>
             
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border">
@@ -721,7 +717,7 @@ const UploadPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 p-4 bg-secondary/50 rounded-lg">
+            <div className="mt-4 p-4 bg-secondary/50 rounded-sm">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
@@ -741,15 +737,15 @@ const UploadPage = () => {
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="racing-gradient"
+             
             >
               {saveMutation.isPending ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Saving...
+                  Saving…
                 </>
               ) : (
-                'Save Race Results'
+                'Save race'
               )}
             </Button>
           </div>

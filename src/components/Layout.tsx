@@ -6,48 +6,62 @@ import {
   Trophy,
   Users,
   MapPin,
-  GitCompare,
-  Menu,
-  X,
   LogIn,
   LogOut,
   User,
   Medal,
+  MoreHorizontal,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import BrandMark from '@/components/BrandMark';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: typeof Home;
+  protected?: boolean;
+}
+
+const navItems: NavItem[] = [
   { path: '/', label: 'Home', icon: Home },
-  { path: '/upload', label: 'Upload Race', icon: Upload, protected: true },
   { path: '/races', label: 'Races', icon: Flag },
   { path: '/championships', label: 'Championships', icon: Medal },
   { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { path: '/drivers', label: 'Drivers', icon: Users },
   { path: '/circuits', label: 'Circuits', icon: MapPin },
-  { path: '/compare', label: 'Compare', icon: GitCompare },
+  { path: '/upload', label: 'Upload race', icon: Upload, protected: true },
 ];
+
+// Mobile tab bar shows the four most used sections; the rest live under "More"
+const tabPaths = ['/', '/races', '/championships', '/leaderboard'];
+const tabLabels: Record<string, string> = { '/championships': 'Champs', '/leaderboard': 'Ranking' };
+
+const isActivePath = (pathname: string, path: string) =>
+  path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`);
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { isLoggedIn, username, isLoading, logout } = useAuth();
 
   const visibleNavItems = navItems.filter(item => !item.protected || isLoggedIn);
+  const tabItems = navItems.filter(item => tabPaths.includes(item.path));
+  const moreItems = visibleNavItems.filter(item => !tabPaths.includes(item.path));
+  const moreActive = moreItems.some(item => isActivePath(location.pathname, item.path));
 
-  const handleNavClick = (item: typeof navItems[0], e: React.MouseEvent) => {
-    if (item.protected && !isLoggedIn) {
-      e.preventDefault();
-      navigate('/login', { state: { message: 'You need to login first to upload a new race' } });
-    }
-  };
+  useEffect(() => {
+    setMoreOpen(false);
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -56,152 +70,140 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {visibleNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+      <header className="fixed top-0 inset-x-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-between gap-4 h-14 md:h-16">
+            <BrandMark />
+
+            <nav className="hidden lg:flex items-center gap-1" aria-label="Main">
+              {visibleNavItems.map(item => {
+                const isActive = isActivePath(location.pathname, item.path);
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    onClick={(e) => handleNavClick(item, e)}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                      isActive 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      'relative px-3 py-2 text-sm font-medium transition-colors',
+                      isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <Icon className="w-4 h-4" />
                     {item.label}
+                    {isActive && (
+                      <span className="absolute left-3 right-3 -bottom-[11px] h-[3px] bg-primary -skew-x-12" />
+                    )}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Auth Section - Desktop */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {isLoading ? (
-                <div className="h-9 w-20 bg-secondary animate-pulse rounded-lg" />
+                <div className="h-9 w-20 bg-secondary animate-pulse rounded-sm" />
               ) : isLoggedIn ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="w-4 h-4" />
-                    <span>{username}</span>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleLogout}
-                    className="gap-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Logout
+                    {username}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={handleLogout} className="hidden lg:inline-flex">
+                    <LogOut />
+                    Log out
                   </Button>
                 </>
               ) : (
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  onClick={() => navigate('/login')}
-                  className="gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Login
+                <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
+                  <LogIn />
+                  Log in
                 </Button>
               )}
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-secondary"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <nav className="md:hidden border-t border-border bg-background animate-slide-in">
-            <div className="container mx-auto px-4 py-4 space-y-1">
-              {visibleNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={(e) => {
-                      handleNavClick(item, e);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                      isActive 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              
-              {/* Mobile Auth Section */}
-              <div className="pt-4 border-t border-border mt-4">
-                {isLoading ? (
-                  <div className="h-10 bg-secondary animate-pulse rounded-lg" />
-                ) : isLoggedIn ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 px-4 text-sm text-muted-foreground">
-                      <User className="w-4 h-4" />
-                      <span>Logged in as <strong>{username}</strong></span>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full gap-2"
-                      onClick={() => {
-                        handleLogout();
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="default" 
-                    className="w-full gap-2"
-                    onClick={() => {
-                      navigate('/login');
-                      setMobileMenuOpen(false);
-                    }}
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </Button>
-                )}
-              </div>
-            </div>
-          </nav>
-        )}
       </header>
 
-      {/* Main Content */}
-      <main className="pt-16">
-        <div className="container mx-auto px-4 py-8">
-          {children}
-        </div>
+      <main className="pt-[57px] md:pt-[65px] pb-24 lg:pb-12">
+        <div className="container mx-auto py-6 md:py-10">{children}</div>
       </main>
+
+      {/* Mobile / tablet tab bar */}
+      <nav
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border pb-safe"
+        aria-label="Main"
+      >
+        <div className="grid grid-cols-5">
+          {tabItems.map(item => {
+            const Icon = item.icon;
+            const isActive = isActivePath(location.pathname, item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'relative flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium transition-colors',
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                {isActive && <span className="absolute top-0 inset-x-4 h-[3px] bg-primary -skew-x-12" />}
+                <Icon className="w-5 h-5" />
+                {tabLabels[item.path] ?? item.label}
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className={cn(
+              'relative flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium',
+              moreActive ? 'text-primary' : 'text-muted-foreground'
+            )}
+          >
+            {moreActive && <span className="absolute top-0 inset-x-4 h-[3px] bg-primary -skew-x-12" />}
+            <MoreHorizontal className="w-5 h-5" />
+            More
+          </button>
+        </div>
+      </nav>
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-md border-border pb-safe">
+          <SheetHeader>
+            <SheetTitle className="display text-2xl uppercase text-left">More</SheetTitle>
+          </SheetHeader>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {moreItems.map(item => {
+              const Icon = item.icon;
+              const isActive = isActivePath(location.pathname, item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    'flex items-center gap-3 px-4 h-14 rounded-sm border text-sm font-medium',
+                    isActive ? 'border-primary text-primary' : 'border-border bg-secondary/50'
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-4 border-t border-border">
+            {isLoggedIn ? (
+              <Button variant="outline" className="w-full" onClick={handleLogout}>
+                <LogOut />
+                Log out {username}
+              </Button>
+            ) : (
+              <Button className="w-full" onClick={() => navigate('/login')}>
+                <LogIn />
+                Log in to upload races
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

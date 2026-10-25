@@ -1,142 +1,181 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Flag, Users, MapPin, Upload, Calendar, ChevronRight, Medal } from 'lucide-react';
+import { Flag, ChevronRight, Timer, Users, Medal, Upload } from 'lucide-react';
+import type { ChampionshipDetail } from '@/lib/api';
 import { api } from '@/lib/api';
-import StatCard from '@/components/StatCard';
+import { groupRaceDays } from '@/lib/race';
+import { shortLap } from '@/lib/timing';
+import { useCountUp } from '@/hooks/use-count-up';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import RaceDayCard from '@/components/racing/RaceDayCard';
+import HeroRotator from '@/components/home/HeroRotator';
+import SeasonPulse from '@/components/home/SeasonPulse';
+import { getCircuitLayout } from '@/lib/circuitLayouts';
+
+const SeasonStat = ({ label, value, icon: Icon }: { label: string; value?: number; icon: typeof Flag }) => {
+  const { ref, value: shown } = useCountUp<HTMLParagraphElement>(value);
+  return (
+    <div className="bg-card p-4 md:p-6">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="w-4 h-4" />
+        {label}
+      </div>
+      <p ref={ref} className="display lap-time text-4xl md:text-6xl mt-2" aria-label={value?.toString()}>
+        {value === undefined ? '–' : shown.toLocaleString('en')}
+      </p>
+    </div>
+  );
+};
 
 const Index = () => {
   const { isLoggedIn } = useAuth();
+  const [pickedSessionId, setPickedSessionId] = useState<number>();
+
   const { data: races, isLoading: racesLoading } = useQuery({
     queryKey: ['races'],
     queryFn: () => api.getRaces(),
   });
 
-  const { data: drivers, isLoading: driversLoading } = useQuery({
+  const { data: drivers } = useQuery({
     queryKey: ['drivers'],
     queryFn: () => api.getDrivers(),
   });
 
-  const { data: circuits, isLoading: circuitsLoading } = useQuery({
+  const { data: circuits } = useQuery({
     queryKey: ['circuits'],
     queryFn: () => api.getCircuits(),
   });
 
-  const isLoading = racesLoading || driversLoading || circuitsLoading;
+  const { data: championships } = useQuery({
+    queryKey: ['championships'],
+    queryFn: () => api.getChampionships(),
+  });
 
-  const recentRaces = races?.slice(0, 5) || [];
+  const allRaceDays = groupRaceDays(races ?? []);
+  const latestDay = allRaceDays[0];
+  const latestRaceId = pickedSessionId ?? latestDay?.sessions[latestDay.sessions.length - 1].id;
+
+  const { data: latestRace, isLoading: latestLoading } = useQuery({
+    queryKey: ['race', String(latestRaceId)],
+    queryFn: () => api.getRace(latestRaceId!),
+    enabled: latestRaceId !== undefined,
+    // Keep the current classification on screen while switching sessions
+    placeholderData: previous => previous,
+  });
+
+  const circuitDetails = useQueries({
+    queries: (circuits ?? []).map(c => ({
+      queryKey: ['circuit', String(c.id)],
+      queryFn: () => api.getCircuit(c.id),
+    })),
+  });
+
+  const championshipDetails = useQueries({
+    queries: (championships ?? []).map(c => ({
+      queryKey: ['championship', String(c.id)],
+      queryFn: () => api.getChampionship(c.id),
+    })),
+  });
+
+  const loadedChampionships = championshipDetails
+    .map(q => q.data)
+    .filter((c): c is ChampionshipDetail => !!c && c.standings.length > 0);
+  const totalLaps = circuitDetails.every(q => q.data)
+    ? circuitDetails.reduce((sum, q) => sum + (q.data?.stats.total_laps ?? 0), 0)
+    : undefined;
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-background to-background border border-border p-8 md:p-12">
-        <div className="checkered-pattern absolute inset-0 opacity-5" />
-        <div className="relative z-10">
-          <h1 className="text-5xl md:text-7xl font-display tracking-wider">
-            SPEED <span className="text-primary">CHAMPION</span>
-          </h1>
-          <p className="text-muted-foreground mt-4 max-w-xl text-lg">
-            Track your karting performance, analyze lap times, and compete with friends on the leaderboard.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link to="/championships">
-              <Button className="gap-2 racing-gradient hover:opacity-90">
-                <Medal className="w-4 h-4" />
-                View Championships
-              </Button>
+    <div className="space-y-10 md:space-y-14">
+      <HeroRotator
+        latestDay={latestDay}
+        latestRace={latestRace}
+        latestRaceId={latestRaceId}
+        onPickSession={setPickedSessionId}
+        raceLoading={racesLoading || latestLoading}
+        championships={loadedChampionships}
+      />
+
+      {/* Season numbers */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border border border-border rounded-sm overflow-hidden">
+        <SeasonStat label="Races run" value={races?.length} icon={Flag} />
+        <SeasonStat label="Laps timed" value={totalLaps} icon={Timer} />
+        <SeasonStat label="Drivers" value={drivers?.length} icon={Users} />
+        <SeasonStat label="Championships" value={championships?.length} icon={Medal} />
+      </section>
+
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* Recent race days */}
+        <section className="space-y-4">
+          <div className="flex items-end justify-between">
+            <h2 className="section-title">Recent race days</h2>
+            <Link to="/races" className="text-sm text-primary hover:underline flex items-center gap-1">
+              All races <ChevronRight className="w-4 h-4" />
             </Link>
-            {isLoggedIn && (
-              <Link to="/upload">
-                <Button variant="outline" className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  Upload New Race Results
-                </Button>
-              </Link>
-            )}
           </div>
-        </div>
-      </div>
+          {racesLoading ? (
+            <LoadingSpinner className="py-8 justify-center" />
+          ) : (
+            <div className="space-y-2">
+              {allRaceDays.slice(0, 4).map(day => (
+                <RaceDayCard key={day.key} day={day} />
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* Stats Grid */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            title="Total Races"
-            value={races?.length || 0}
-            icon={Flag}
-            subtitle="Race sessions recorded"
-          />
-          <StatCard
-            title="Total Drivers"
-            value={drivers?.length || 0}
-            icon={Users}
-            subtitle="Registered racers"
-          />
-          <StatCard
-            title="Total Circuits"
-            value={circuits?.length || 0}
-            icon={MapPin}
-            subtitle="Tracks available"
-          />
-        </div>
-      )}
-
-      {/* Recent Races */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-display tracking-wider">RECENT RACES</h2>
-          <Link to="/races" className="text-primary hover:underline text-sm flex items-center gap-1">
-            View all <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <LoadingSpinner />
-          </div>
-        ) : recentRaces.length > 0 ? (
-          <div className="space-y-2">
-            {recentRaces.map((race) => (
-              <Link
-                key={race.id}
-                to={`/races/${race.id}`}
-                className="flex items-center justify-between p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Flag className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Race #{race.id}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {race.date}
+        <div className="space-y-10">
+          {/* Track records */}
+          <section className="space-y-4">
+            <h2 className="section-title">Track records</h2>
+            <div className="space-y-2">
+              {circuitDetails.map(({ data: c }) =>
+                c ? (
+                  <Link
+                    key={c.id}
+                    to={`/circuits/${c.id}`}
+                    className="panel flex items-center gap-4 p-4 hover:border-primary/60 transition-colors"
+                  >
+                    {getCircuitLayout(c.id) && (
+                      <img
+                        src={getCircuitLayout(c.id)}
+                        alt=""
+                        aria-hidden
+                        className="h-12 w-16 object-contain shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold truncate">{c.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {c.stats.fastest_lap_driver ? `Held by ${c.stats.fastest_lap_driver}` : 'No record yet'}
+                      </p>
                     </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-card rounded-lg border border-border">
-            <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No races recorded yet</p>
-            {isLoggedIn && (
-              <Link to="/upload">
-                <Button variant="outline" className="mt-4">
-                  Upload your first race
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
+                    <span className="display lap-time text-3xl t-purple">{shortLap(c.stats.fastest_lap_ever)}</span>
+                  </Link>
+                ) : null
+              )}
+            </div>
+          </section>
+
+          <SeasonPulse raceDays={allRaceDays} />
+
+          {isLoggedIn && (
+            <section className="panel p-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold">Back from the track?</p>
+                <p className="text-sm text-muted-foreground">Upload the timing sheet photo.</p>
+              </div>
+              <Button asChild>
+                <Link to="/upload">
+                  <Upload />
+                  Upload race
+                </Link>
+              </Button>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -13,7 +13,6 @@ import LeaderboardPage from "./pages/Leaderboard";
 import DriversPage from "./pages/Drivers";
 import DriverDetailPage from "./pages/DriverDetail";
 import DriverEvolutionPage from "./pages/DriverEvolution";
-import ComparePage from "./pages/Compare";
 import CircuitsPage from "./pages/Circuits";
 import CircuitDetailPage from "./pages/CircuitDetail";
 import LoginPage from "./pages/Login";
@@ -41,7 +40,6 @@ const App = () => (
               <Route path="/drivers" element={<DriversPage />} />
               <Route path="/drivers/:id" element={<DriverDetailPage />} />
               <Route path="/drivers/:id/evolution" element={<DriverEvolutionPage />} />
-              <Route path="/compare" element={<ComparePage />} />
               <Route path="/circuits" element={<CircuitsPage />} />
               <Route path="/circuits/:id" element={<CircuitDetailPage />} />
               <Route path="/championships" element={<ChampionshipsPage />} />
