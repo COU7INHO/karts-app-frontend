@@ -5,21 +5,24 @@ interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
+// Three slanted bars pulsing like the rev lights on a steering wheel
 const LoadingSpinner = ({ className, size = 'md' }: LoadingSpinnerProps) => {
   const sizeClasses = {
-    sm: 'w-4 h-4 border-2',
-    md: 'w-8 h-8 border-3',
-    lg: 'w-12 h-12 border-4',
+    sm: 'h-3 w-1.5',
+    md: 'h-5 w-2',
+    lg: 'h-8 w-3',
   };
 
   return (
-    <div
-      className={cn(
-        'animate-spin rounded-full border-primary border-t-transparent',
-        sizeClasses[size],
-        className
-      )}
-    />
+    <div className={cn('flex items-center gap-1', className)} role="status" aria-label="Loading">
+      {[0, 1, 2].map(i => (
+        <span
+          key={i}
+          className={cn('-skew-x-12 bg-primary animate-pulse', sizeClasses[size])}
+          style={{ animationDelay: `${i * 150}ms` }}
+        />
+      ))}
+    </div>
   );
 };
 

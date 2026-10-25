@@ -1,9 +1,6 @@
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft, Trophy, Flag, Calendar, MapPin,
-  Pencil, Trash2, Star, Zap, Gift, TrendingUp,
-} from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, Star, Zap, Gift } from 'lucide-react';
 import { api, RaceDetail } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,28 +9,23 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import PositionBadge from '@/components/PositionBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { chartAxis, formatRaceDate, getDriverColor, timeToSeconds as parseLap } from '@/lib/timing';
+import { groupRaceDays } from '@/lib/race';
+import PageHeader from '@/components/racing/PageHeader';
+import Podium from '@/components/racing/Podium';
+import TimingTower, { TowerRow } from '@/components/racing/TimingTower';
+import RaceDayCard from '@/components/racing/RaceDayCard';
+import { getChampionshipLogo } from '@/lib/championshipLogos';
 
 const FASTEST_LAP_PTS = [10, 6, 4, 3, 2];
 const AVERAGE_LAP_PTS = [9, 5, 3, 2, 1];
 
-const getDriverColor = (index: number): string => {
-  const hue = Math.round((index * 137.508) % 360);
-  return `hsl(${hue}, 70%, 55%)`;
-};
-
-const timeToSeconds = (time: string | null): number => {
-  if (!time) return Infinity;
-  const [mins, secs] = time.split(':');
-  return parseInt(mins) * 60 + parseFloat(secs);
-};
+const timeToSeconds = (time: string | null): number => parseLap(time) ?? Infinity;
 
 const calcRacePoints = (
   results: RaceDetail['results'],
@@ -125,7 +117,7 @@ const ChampionshipDetailPage = () => {
     const running: Record<string, number> = {};
     driverNames.forEach(name => { running[name] = 0; });
 
-    return sortedRaces.map(race => {
+    return sortedRaces.map((race, i) => {
       const detail = raceResults[race.id];
       if (detail) {
         const pts = calcRacePoints(detail.results, driverNamesSet);
@@ -134,9 +126,10 @@ const ChampionshipDetailPage = () => {
         });
       }
       return {
+        index: i + 1,
         label: race.circuit_name ? `${race.circuit_name}\n${race.date}` : race.date,
         shortLabel: race.circuit_name ?? race.date,
-        fullLabel: race.circuit_name ? `${race.circuit_name} (${race.date})` : race.date,
+        fullLabel: `Race ${i + 1}, ${formatRaceDate(race.date)}${race.circuit_name ? ` at ${race.circuit_name}` : ''}`,
         ...Object.fromEntries(driverNames.map(name => [name, running[name]])),
       };
     });
@@ -215,29 +208,30 @@ const ChampionshipDetailPage = () => {
   if (error || !championship) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Championship not found</p>
-        <Link to="/championships">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Championships
-          </Button>
-        </Link>
+        <p className="text-muted-foreground">This championship doesn't exist.</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link to="/championships">
+            <ArrowLeft />
+            Back to championships
+          </Link>
+        </Button>
       </div>
     );
   }
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const entry = chartData.find(d => d.shortLabel === label);
+      const entry = chartData.find(d => d.index === label);
       return (
-        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium mb-2 text-sm">{entry?.fullLabel ?? label}</p>
+        <div className="panel p-3 shadow-xl">
+          <p className="font-semibold mb-2 text-sm">{entry?.fullLabel ?? label}</p>
           {payload
             .slice()
             .sort((a: any, b: any) => b.value - a.value)
             .map((p: any) => (
-              <p key={p.name} className="text-sm" style={{ color: p.color }}>
-                {p.name}: <strong>{p.value} pts</strong>
+              <p key={p.name} className="text-sm flex justify-between gap-6" style={{ color: p.color }}>
+                <span>{p.name}</span>
+                <span className="lap-time">{p.value} pts</span>
               </p>
             ))}
         </div>
@@ -246,162 +240,131 @@ const ChampionshipDetailPage = () => {
     return null;
   };
 
+  const raceDays = groupRaceDays(
+    championship.races.map(r => ({ id: r.id, date: r.date, circuit_name: r.circuit_name }))
+  );
+
+  const leader = championship.standings[0];
+  const logo = getChampionshipLogo(championship.id);
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link to="/championships">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="page-title">{championship.name.toUpperCase()}</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {championship.drivers.length} drivers · {championship.races.length} races
-            </p>
-          </div>
-        </div>
-        {isLoggedIn && (
-          <div className="flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={openEdit} className="gap-2">
-              <Pencil className="w-4 h-4" />
-              Edit
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive">
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete championship?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete "{championship.name}". This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteMutation.mutate()}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
+    <div className="space-y-8 md:space-y-10 animate-fade-in">
+      <PageHeader
+        back={{ to: '/championships', label: 'Championships' }}
+        leading={
+          logo && <img src={logo} alt={`${championship.name} logo`} className="w-20 h-20 md:w-32 md:h-32 object-contain shrink-0" />
+        }
+        title={championship.name}
+        subtitle={`${championship.drivers.length} drivers, ${championship.races.length} races`}
+        actions={
+          isLoggedIn && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={openEdit}>
+                <Pencil />
+                Edit
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                    <Trash2 />
                     Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
-      </div>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete championship?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete "{championship.name}". The races themselves are kept.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete championship
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )
+        }
+      />
 
       {/* Standings */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="flex items-center gap-3 p-4 border-b border-border">
-          <Trophy className="w-5 h-5 text-primary" />
-          <h2 className="font-display text-xl tracking-wider">STANDINGS</h2>
+      {championship.standings.length === 0 ? (
+        <div className="panel text-center py-12 text-muted-foreground">
+          {championship.drivers.length === 0
+            ? 'No standings yet. Add drivers to the championship.'
+            : championship.races.length === 0
+            ? 'No standings yet. Add races to the championship.'
+            : 'No standings yet.'}
         </div>
-
-        {championship.standings.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {championship.drivers.length === 0
-              ? 'No standings yet — add drivers to the championship.'
-              : championship.races.length === 0
-              ? 'No standings yet — add races to the championship.'
-              : 'No standings yet.'}
+      ) : (
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start">
+          <div className="space-y-3">
+            <div className="panel p-3 md:p-5 overflow-hidden">
+              <Podium
+                title="Standings"
+                tag={`${championship.races.length} races`}
+                highlightClassName="text-primary"
+                entries={championship.standings.map(s => ({
+                  key: s.driver_id,
+                  name: s.driver_name,
+                  href: `/drivers/${s.driver_id}`,
+                  value: `${s.total_points} pts`,
+                }))}
+              />
+            </div>
+            <div className="panel p-4 text-xs text-muted-foreground space-y-1.5">
+              <p className="font-medium text-foreground text-sm mb-2">Points per race</p>
+              <p className="flex items-center gap-2"><Zap className="w-3.5 h-3.5 t-purple" /> Fastest lap: 10, 6, 4, 3, 2</p>
+              <p className="flex items-center gap-2"><Star className="w-3.5 h-3.5 t-avg" /> Best average: 9, 5, 3, 2, 1</p>
+              <p className="flex items-center gap-2"><Gift className="w-3.5 h-3.5 text-primary" /> Both in the same race: +2 bonus</p>
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="racing-table">
-                <thead>
-                  <tr>
-                    <th className="w-16">Pos</th>
-                    <th>Driver</th>
-                    <th>Total Pts</th>
-                    <th className="whitespace-nowrap">
-                      <span className="flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5" /> Fastest
-                      </span>
-                    </th>
-                    <th className="whitespace-nowrap">
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5" /> Average
-                      </span>
-                    </th>
-                    <th className="whitespace-nowrap">
-                      <span className="flex items-center gap-1">
-                        <Gift className="w-3.5 h-3.5" /> Bonus
-                      </span>
-                    </th>
-                    <th>Races</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {championship.standings.map((s) => {
-                    const medal = MEDALS[s.position];
-                    const isLeader = s.position === 1;
-                    return (
-                      <tr key={s.driver_id} className={cn(isLeader && 'bg-primary/5')}>
-                        <td>
-                          {medal ? (
-                            <span className="text-lg">{medal}</span>
-                          ) : (
-                            <PositionBadge position={s.position} />
-                          )}
-                        </td>
-                        <td className="font-medium">
-                          <Link
-                            to={`/drivers/${s.driver_id}`}
-                            className="hover:text-primary transition-colors"
-                          >
-                            {s.driver_name}
-                          </Link>
-                        </td>
-                        <td className={cn('font-bold text-lg tabular-nums', isLeader && 'text-primary')}>
-                          {s.total_points}
-                        </td>
-                        <td className="text-muted-foreground tabular-nums">
-                          {s.fastest_lap_points}
-                        </td>
-                        <td className="text-muted-foreground tabular-nums">
-                          {s.average_lap_points}
-                        </td>
-                        <td>
-                          {s.bonus_points > 0 ? (
-                            <span className="text-amber-500 font-medium">+{s.bonus_points}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="text-muted-foreground">
-                          {s.races_participated}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground flex flex-wrap gap-4">
-              <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> Fastest lap: 10/6/4/3/2 pts</span>
-              <span className="flex items-center gap-1"><Star className="w-3 h-3" /> Best average: 9/5/3/2/1 pts</span>
-              <span className="flex items-center gap-1"><Gift className="w-3 h-3" /> Double win bonus: +2 pts</span>
-            </div>
-          </>
-        )}
-      </div>
+
+          <TimingTower
+            header={
+              <div className="panel-head text-xs text-muted-foreground">
+                <span>Standings</span>
+                <span>Gap / Points</span>
+              </div>
+            }
+          >
+            {championship.standings.map(s => (
+              <TowerRow
+                key={s.driver_id}
+                position={s.position}
+                name={s.driver_name}
+                href={`/drivers/${s.driver_id}`}
+                meta={
+                  <span className="flex gap-3">
+                    <span className="flex items-center gap-1"><Zap className="w-3 h-3 t-purple" />{s.fastest_lap_points}</span>
+                    <span className="flex items-center gap-1"><Star className="w-3 h-3 t-avg" />{s.average_lap_points}</span>
+                    {s.bonus_points > 0 && (
+                      <span className="flex items-center gap-1"><Gift className="w-3 h-3 text-primary" />{s.bonus_points}</span>
+                    )}
+                    <span className="hidden sm:inline">{s.races_participated} races</span>
+                  </span>
+                }
+                gap={leader && s.position > 1 ? `−${leader.total_points - s.total_points}` : ''}
+                value={
+                  <span className={cn('display text-2xl', s.position === 1 && 'text-primary')}>{s.total_points}</span>
+                }
+              />
+            ))}
+          </TimingTower>
+        </div>
+      )}
 
       {/* Points Over Time Chart */}
       {championship.drivers.length > 0 && championship.races.length > 0 && (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-xl tracking-wider">POINTS OVER TIME</h2>
-          </div>
+        <section className="panel p-4 md:p-6">
+          <h2 className="section-title">Title fight</h2>
+          <p className="text-sm text-muted-foreground mt-1">Points after each race</p>
 
           {raceResultsLoading ? (
             <div className="flex justify-center py-12">
@@ -409,62 +372,48 @@ const ChampionshipDetailPage = () => {
             </div>
           ) : (
             <>
-              {/* Driver toggles */}
-              <div className="mb-6">
-                <p className="text-sm text-muted-foreground mb-3">Filter Drivers:</p>
-                <div className="flex flex-wrap gap-2">
-                  {driverNames.map((name, index) => {
-                    const isSelected = selectedDrivers.has(name);
-                    const color = getDriverColor(index);
-                    const isLast = isSelected && selectedDrivers.size === 1;
-                    return (
-                      <button
-                        key={name}
-                        onClick={() => toggleDriver(name)}
-                        disabled={isLast}
-                        className={cn(
-                          'px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2',
-                          isLast && 'cursor-not-allowed',
-                          !isSelected && 'opacity-50 hover:opacity-75',
-                        )}
-                        style={{
-                          borderColor: color,
-                          backgroundColor: isSelected ? color : 'transparent',
-                          color: isSelected ? 'white' : color,
-                        }}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex flex-wrap gap-2 mt-4 mb-6">
+                {driverNames.map((name, index) => {
+                  const isSelected = selectedDrivers.has(name);
+                  const color = getDriverColor(index);
+                  const isLast = isSelected && selectedDrivers.size === 1;
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => toggleDriver(name)}
+                      disabled={isLast}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        'inline-flex items-center gap-2 h-8 px-3 rounded-sm text-sm font-medium border transition-colors',
+                        isSelected ? 'bg-secondary border-border' : 'border-dashed border-border text-muted-foreground',
+                        isLast && 'cursor-not-allowed'
+                      )}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: isSelected ? color : 'transparent', boxShadow: `inset 0 0 0 1.5px ${color}` }}
+                      />
+                      {name}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="h-80">
+              <div className="h-72 md:h-96 -ml-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.5} vertical={false} />
                     <XAxis
-                      dataKey="shortLabel"
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={11}
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      interval={0}
-                      angle={chartData.length > 4 ? -30 : 0}
-                      textAnchor={chartData.length > 4 ? 'end' : 'middle'}
-                      height={chartData.length > 4 ? 60 : 30}
+                      dataKey="index"
+                      {...chartAxis}
+                      tickFormatter={v => `R${v}`}
+                      interval="preserveStartEnd"
                     />
-                    <YAxis
-                      stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
-                      allowDecimals={false}
-                      tickFormatter={(v) => `${v} pts`}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
+                    <YAxis {...chartAxis} width={40} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '3 3' }} />
                     {driverNames
                       .filter(name => selectedDrivers.has(name))
-                      .map((name, i) => {
+                      .map(name => {
                         const originalIndex = driverNames.indexOf(name);
                         return (
                           <Line
@@ -472,9 +421,9 @@ const ChampionshipDetailPage = () => {
                             type="monotone"
                             dataKey={name}
                             stroke={getDriverColor(originalIndex)}
-                            strokeWidth={2}
-                            dot={{ fill: getDriverColor(originalIndex), r: 4 }}
-                            activeDot={{ r: 6 }}
+                            strokeWidth={2.5}
+                            dot={false}
+                            activeDot={{ r: 5 }}
                             connectNulls
                           />
                         );
@@ -484,44 +433,28 @@ const ChampionshipDetailPage = () => {
               </div>
             </>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Races list */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="flex items-center gap-3 p-4 border-b border-border">
-          <Flag className="w-5 h-5 text-primary" />
-          <h2 className="font-display text-lg tracking-wider">RACES</h2>
-        </div>
-        {championship.races.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8 text-sm">No races added</p>
+      {/* Races */}
+      <section className="space-y-4">
+        <h2 className="section-title">Race calendar</h2>
+        {raceDays.length === 0 ? (
+          <div className="panel text-center text-muted-foreground py-8 text-sm">No races in this championship yet.</div>
         ) : (
-          <ul className="divide-y divide-border">
-            {championship.races.map((r) => (
-              <li key={r.id} className="px-4 py-3">
-                <Link to={`/races/${r.id}`} className="hover:text-primary transition-colors">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">{r.date}</span>
-                  </div>
-                  {r.circuit_name && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      {r.circuit_name}
-                    </div>
-                  )}
-                </Link>
-              </li>
+          <div className="grid gap-2 md:grid-cols-2">
+            {raceDays.map(day => (
+              <RaceDayCard key={day.key} day={day} />
             ))}
-          </ul>
+          </div>
         )}
-      </div>
+      </section>
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-wider">EDIT CHAMPIONSHIP</DialogTitle>
+            <DialogTitle className="display text-2xl uppercase">Edit championship</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6 py-2">
@@ -583,7 +516,7 @@ const ChampionshipDetailPage = () => {
               onClick={handleUpdate}
               disabled={!form.name.trim() || updateMutation.isPending}
             >
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
+              {updateMutation.isPending ? 'Saving…' : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

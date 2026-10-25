@@ -1,18 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Flag, Gauge, Zap, Calendar, ChevronRight, Sun, Building, ChevronDown, TrendingDown } from 'lucide-react';
+import { ArrowLeft, Flag, Gauge, Timer, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useMemo } from 'react';
+import { groupRaceDays } from '@/lib/race';
+import { shortLap, timeToSeconds } from '@/lib/timing';
+import PageHeader from '@/components/racing/PageHeader';
+import RaceDayCard from '@/components/racing/RaceDayCard';
+import EvolutionChart, { EvolutionPoint } from '@/components/racing/EvolutionChart';
+import { getCircuitLayout } from '@/lib/circuitLayouts';
+import { cn } from '@/lib/utils';
 
 const CircuitDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [evolutionOpen, setEvolutionOpen] = useState(false);
 
   const { data: circuit, isLoading, error } = useQuery({
     queryKey: ['circuit', id],
@@ -21,7 +25,7 @@ const CircuitDetailPage = () => {
   });
 
   const { data: races } = useQuery({
-    queryKey: ['races', 'circuit', id],
+    queryKey: ['races', id],
     queryFn: () => api.getRaces(parseInt(id!)),
     enabled: !!id,
   });
@@ -29,63 +33,28 @@ const CircuitDetailPage = () => {
   const { data: evolution } = useQuery({
     queryKey: ['circuit-evolution', id],
     queryFn: () => api.getCircuitEvolution(parseInt(id!)),
-    enabled: !!id && evolutionOpen,
+    enabled: !!id,
   });
 
-  // Time conversion helpers
-  const timeToSeconds = (time: string | null): number | null => {
-    if (!time) return null;
-    const parts = time.split(':');
-    const mins = parseInt(parts[0]);
-    const secs = parseFloat(parts[1]);
-    return mins * 60 + secs;
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = (seconds % 60).toFixed(3);
-    return `${mins}:${secs.padStart(6, '0')}`;
-  };
-
-  // Process evolution data for charts
-  const fastestLapData = evolution?.fastest_lap_evolution.map(item => ({
-    date: item.date,
-    race_id: item.race_id,
-    time: timeToSeconds(item.lap_time),
-    display: item.lap_time,
-  })).filter(d => d.time !== null) || [];
-
-  const avgLapData = evolution?.average_lap_evolution.map(item => ({
-    date: item.date,
-    race_id: item.race_id,
-    time: timeToSeconds(item.lap_time),
-    display: item.lap_time,
-  })).filter(d => d.time !== null) || [];
-
-  // Calculate dynamic Y-axis domain
-  const allTimes = [...fastestLapData, ...avgLapData].map(d => d.time).filter((v): v is number => v !== null);
-  const yAxisDomain = allTimes.length > 0
-    ? [Math.min(...allTimes) - 2, Math.max(...allTimes) + 2] as [number, number]
-    : undefined;
-
-  const handleChartClick = (data: any) => {
-    if (data?.activePayload?.[0]?.payload?.race_id) {
-      navigate(`/races/${data.activePayload[0].payload.race_id}`);
-    }
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium mb-1">{label}</p>
-          <p className="text-sm text-primary">Lap Time: {payload[0].payload.display}</p>
-          <p className="text-xs text-muted-foreground mt-1">Click to view race</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  // Merge the per-race fastest and average series into one set of points
+  const chartData = useMemo<EvolutionPoint[]>(() => {
+    if (!evolution) return [];
+    const byRace = new Map<number, EvolutionPoint>();
+    evolution.fastest_lap_evolution.forEach(item => {
+      byRace.set(item.race_id, {
+        date: item.date,
+        race_id: item.race_id,
+        fastest: timeToSeconds(item.lap_time),
+        fastest_display: item.lap_time,
+        average: null,
+      });
+    });
+    evolution.average_lap_evolution.forEach(item => {
+      const point = byRace.get(item.race_id) ?? { date: item.date, race_id: item.race_id, fastest: null };
+      byRace.set(item.race_id, { ...point, average: timeToSeconds(item.lap_time), average_display: item.lap_time });
+    });
+    return [...byRace.values()].sort((a, b) => a.date.localeCompare(b.date) || (a.race_id ?? 0) - (b.race_id ?? 0));
+  }, [evolution]);
 
   if (isLoading) {
     return (
@@ -98,210 +67,89 @@ const CircuitDetailPage = () => {
   if (error || !circuit) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Circuit not found</p>
-        <Link to="/circuits">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Circuits
-          </Button>
-        </Link>
+        <p className="text-muted-foreground">This circuit doesn't exist.</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link to="/circuits">
+            <ArrowLeft />
+            Back to circuits
+          </Link>
+        </Button>
       </div>
     );
   }
 
+  const raceDays = groupRaceDays(races ?? []);
+  const layout = getCircuitLayout(circuit.id);
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <Link to="/circuits">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </Link>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center">
-            <MapPin className="w-8 h-8 text-primary" />
+    <div className="space-y-8 md:space-y-10 animate-fade-in">
+      <PageHeader
+        back={{ to: '/circuits', label: 'Circuits' }}
+        title={circuit.name}
+        subtitle={`${circuit.city}, ${circuit.type} track`}
+      />
+
+      {/* Track drawing next to the numbers; the stats stack beside it on desktop */}
+      <div className={cn('grid gap-2 md:gap-3', layout && 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]')}>
+        {layout && (
+          <div className="panel flex items-center justify-center p-6 md:p-8">
+            <img
+              src={layout}
+              alt={`${circuit.name} track layout`}
+              className="w-auto h-auto max-w-full max-h-[280px] md:max-h-[420px] object-contain"
+            />
           </div>
-          <div>
-            <h1 className="page-title">{circuit.name.toUpperCase()}</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-muted-foreground">{circuit.city}</span>
-              {circuit.type === 'outdoor' ? (
-                <span className="flex items-center gap-1 text-xs bg-success/20 text-success px-2 py-1 rounded">
-                  <Sun className="w-3 h-3" />
-                  Outdoor
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs bg-accent/20 text-accent px-2 py-1 rounded">
-                  <Building className="w-3 h-3" />
-                  Indoor
-                </span>
-              )}
-            </div>
-          </div>
+        )}
+        <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3', layout && 'lg:grid-cols-1')}>
+          <StatCard
+            title="Lap record"
+            value={shortLap(circuit.stats.fastest_lap_ever)}
+            icon={Timer}
+            highlight
+            subtitle={circuit.stats.fastest_lap_driver ? `Set by ${circuit.stats.fastest_lap_driver}` : undefined}
+          />
+          <StatCard title="Races held" value={circuit.stats.total_races} icon={Flag} />
+          <StatCard title="Laps driven" value={circuit.stats.total_laps.toLocaleString('en')} icon={Gauge} />
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          title="Total Races"
-          value={circuit.stats.total_races}
-          icon={Flag}
-          subtitle="Races held here"
-        />
-        <StatCard
-          title="Total Laps"
-          value={circuit.stats.total_laps}
-          icon={Gauge}
-          subtitle="Laps driven"
-        />
-        <StatCard
-          title="Track Record"
-          value={circuit.stats.fastest_lap_ever || 'N/A'}
-          icon={Zap}
-          subtitle={circuit.stats.fastest_lap_driver ? `by ${circuit.stats.fastest_lap_driver}` : 'Fastest lap ever'}
-        />
-      </div>
+      <section className="panel p-4 md:p-6">
+        <h2 className="section-title mb-4">Getting faster?</h2>
+        {!evolution ? (
+          <LoadingSpinner className="py-8 justify-center" />
+        ) : chartData.length > 0 ? (
+          <EvolutionChart
+            data={chartData}
+            fastestLabel="Fastest lap of the race"
+            averageLabel="Best average of the race"
+            onPointClick={point => point.race_id && navigate(`/races/${point.race_id}`)}
+          />
+        ) : (
+          <p className="text-muted-foreground text-center py-8">No timed laps here yet.</p>
+        )}
+      </section>
 
-      {/* Evolution Charts - Collapsible */}
-      <Collapsible open={evolutionOpen} onOpenChange={setEvolutionOpen}>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="w-4 h-4" />
-              Circuit Evolution Charts
-            </div>
-            <ChevronDown className={`w-4 h-4 transition-transform ${evolutionOpen ? 'rotate-180' : ''}`} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-4 space-y-6">
-          {evolution ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Fastest Lap Evolution Chart */}
-              <div className="bg-card rounded-lg border border-border p-6">
-                <h3 className="font-display text-lg tracking-wider mb-6">FASTEST LAP EVOLUTION</h3>
-                {fastestLapData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={fastestLapData} onClick={handleChartClick}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="hsl(var(--muted-foreground))" 
-                          fontSize={12}
-                          tickFormatter={(value) => new Date(value).toLocaleDateString()}
-                        />
-                        <YAxis
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          domain={yAxisDomain}
-                          tickFormatter={(value) => formatTime(value)}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Line
-                          type="monotone"
-                          dataKey="time"
-                          stroke="hsl(var(--primary))"
-                          strokeWidth={2}
-                          dot={{ r: 4, cursor: 'pointer' }}
-                          activeDot={{ r: 6, cursor: 'pointer' }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">No data available</p>
-                )}
-              </div>
-
-              {/* Average Lap Evolution Chart */}
-              <div className="bg-card rounded-lg border border-border p-6">
-                <h3 className="font-display text-lg tracking-wider mb-6">AVERAGE LAP EVOLUTION</h3>
-                {avgLapData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={avgLapData} onClick={handleChartClick}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="hsl(var(--muted-foreground))" 
-                          fontSize={12}
-                          tickFormatter={(value) => new Date(value).toLocaleDateString()}
-                        />
-                        <YAxis
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          domain={yAxisDomain}
-                          tickFormatter={(value) => formatTime(value)}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Line
-                          type="monotone"
-                          dataKey="time"
-                          stroke="hsl(var(--accent))"
-                          strokeWidth={2}
-                          dot={{ r: 4, cursor: 'pointer' }}
-                          activeDot={{ r: 6, cursor: 'pointer' }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">No data available</p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center py-8">
-              <LoadingSpinner />
-            </div>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Races at this Circuit */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-display tracking-wider">RACES AT THIS CIRCUIT</h2>
-          <Link
-            to={`/races?circuit=${id}`}
-            className="text-primary hover:underline text-sm flex items-center gap-1"
-          >
-            View all <ChevronRight className="w-4 h-4" />
+      <section className="space-y-4">
+        <div className="flex items-end justify-between">
+          <h2 className="section-title">Race days here</h2>
+          <Link to={`/races?circuit=${id}`} className="text-primary hover:underline text-sm flex items-center gap-1">
+            All races <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {races && races.length > 0 ? (
-          <div className="space-y-2">
-            {races.slice(0, 5).map((race) => (
-              <Link
-                key={race.id}
-                to={`/races/${race.id}`}
-                className="flex items-center justify-between p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Flag className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{race.date}</p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      Race session
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </Link>
+        {raceDays.length > 0 ? (
+          <div className="grid gap-2 md:grid-cols-2">
+            {raceDays.slice(0, 6).map(day => (
+              <RaceDayCard key={day.key} day={day} showCircuit={false} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-card rounded-lg border border-border">
-            <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No races held at this circuit yet</p>
+          <div className="panel text-center py-12">
+            <Flag className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">No races held at this circuit yet.</p>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };

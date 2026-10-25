@@ -1,22 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
-import { Flag, Calendar, ChevronRight, Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Flag, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { groupRaceDays } from '@/lib/race';
+import PageHeader from '@/components/racing/PageHeader';
+import CircuitFilter from '@/components/racing/CircuitFilter';
+import RaceDayCard from '@/components/racing/RaceDayCard';
 
 const RacesPage = () => {
-  const [circuitFilter, setCircuitFilter] = useState<string>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const circuitFilter = searchParams.get('circuit') ?? 'all';
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
 
-  const { data: circuits } = useQuery({
-    queryKey: ['circuits'],
-    queryFn: () => api.getCircuits(),
-  });
+  const setCircuitFilter = (value: string) =>
+    setSearchParams(value === 'all' ? {} : { circuit: value }, { replace: true });
 
   const { data: races, isLoading } = useQuery({
     queryKey: ['races', circuitFilter],
@@ -33,91 +34,53 @@ const RacesPage = () => {
     }
   };
 
+  const raceDays = groupRaceDays(races ?? []);
+
+  // Group race days under a year heading
+  const years = raceDays.reduce<Record<string, typeof raceDays>>((acc, day) => {
+    const year = day.date.slice(0, 4);
+    (acc[year] ??= []).push(day);
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="page-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="page-title">RACES</h1>
-          <p className="page-subtitle">View all recorded race sessions</p>
-        </div>
+      <PageHeader
+        title="Races"
+        subtitle={races ? `${races.length} sessions over ${raceDays.length} race days` : 'Every session on record'}
+        actions={
+          <Button onClick={handleAddRaceClick} variant={isLoggedIn ? 'default' : 'outline'}>
+            <Plus />
+            {isLoggedIn ? 'Add race' : 'Log in to add a race'}
+          </Button>
+        }
+      />
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={circuitFilter} onValueChange={setCircuitFilter}>
-            <SelectTrigger className="w-full sm:w-64">
-              <SelectValue placeholder="Filter by circuit" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Circuits</SelectItem>
-              {circuits?.map((circuit) => (
-                <SelectItem key={circuit.id} value={circuit.id.toString()}>
-                  {circuit.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {isLoggedIn ? (
-            <Button onClick={handleAddRaceClick} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add New Race
-            </Button>
-          ) : (
-            <Button variant="outline" onClick={handleAddRaceClick} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Login to Add Race
-            </Button>
-          )}
-        </div>
-      </div>
+      <CircuitFilter value={circuitFilter} onChange={setCircuitFilter} />
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
-      ) : races && races.length > 0 ? (
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="racing-table">
-            <thead>
-              <tr>
-                <th className="w-20">Race ID</th>
-                <th>Date</th>
-                <th>Circuit</th>
-                <th className="w-12"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {races.map((race) => {
-                const circuit = circuits?.find(c => c.id === race.circuit);
-                return (
-                  <tr key={race.id}>
-                    <td className="text-muted-foreground">#{race.id}</td>
-                    <td>
-                      <Link to={`/races/${race.id}`} className="flex items-center gap-2 hover:text-primary">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        {race.date}
-                      </Link>
-                    </td>
-                    <td>{race.circuit_name || circuit?.name || 'Unknown Circuit'}</td>
-                    <td>
-                      <Link
-                        to={`/races/${race.id}`}
-                        className="p-2 rounded-lg hover:bg-secondary inline-flex"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          </div>
+      ) : raceDays.length > 0 ? (
+        <div className="space-y-10">
+          {Object.keys(years)
+            .sort((a, b) => b.localeCompare(a))
+            .map(year => (
+              <section key={year} className="space-y-3">
+                <h2 className="display text-4xl text-muted-foreground/60">{year}</h2>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {years[year].map(day => (
+                    <RaceDayCard key={day.key} day={day} />
+                  ))}
+                </div>
+              </section>
+            ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-card rounded-lg border border-border">
-          <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No races found</p>
+        <div className="panel text-center py-12">
+          <Flag className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">No races at this circuit yet.</p>
         </div>
       )}
     </div>

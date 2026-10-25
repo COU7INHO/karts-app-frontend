@@ -51,15 +51,6 @@ export interface DriverEvolution {
   }[];
 }
 
-export interface DriverComparison {
-  id: number;
-  name: string;
-  total_races: number;
-  total_laps: number;
-  best_lap: string;
-  average_lap: string;
-}
-
 export interface Circuit {
   id: number;
   name: string;
@@ -211,17 +202,6 @@ export const api = {
       headers: getHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch driver evolution');
-    return response.json();
-  },
-
-  compareDrivers: async (ids: number[], circuitId?: number): Promise<{ drivers: DriverComparison[] }> => {
-    const url = circuitId
-      ? `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}&circuit=${circuitId}`
-      : `${API_BASE_URL}/drivers/compare/?ids=${ids.join(',')}`;
-    const response = await fetch(url, { 
-      headers: getHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to compare drivers');
     return response.json();
   },
 

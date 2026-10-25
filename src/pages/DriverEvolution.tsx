@@ -3,10 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
+import { formatRaceDate, shortLap, timeToSeconds } from '@/lib/timing';
+import PageHeader from '@/components/racing/PageHeader';
+import CircuitFilter from '@/components/racing/CircuitFilter';
+import EvolutionChart, { EvolutionPoint } from '@/components/racing/EvolutionChart';
 
 const DriverEvolutionPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,62 +31,24 @@ const DriverEvolutionPage = () => {
 
   const selectedCircuit = circuits?.find(c => c.id.toString() === circuitFilter);
 
-  // Convert lap times to seconds for charting
-  const timeToSeconds = (time: string | null): number | null => {
-    if (!time) return null;
-    const parts = time.split(':');
-    const mins = parseInt(parts[0]);
-    const secs = parseFloat(parts[1]);
-    return mins * 60 + secs;
-  };
-
-  const chartData = useMemo(() => {
+  const chartData = useMemo<EvolutionPoint[]>(() => {
     if (!evolution) return [];
     return evolution.evolution
       .filter(item => item.fastest_lap && item.average_lap)
       .map(item => ({
         date: item.date,
-        fastest_lap: timeToSeconds(item.fastest_lap),
-        average_lap: timeToSeconds(item.average_lap),
-        fastest_lap_display: item.fastest_lap,
-        average_lap_display: item.average_lap,
+        fastest: timeToSeconds(item.fastest_lap),
+        average: timeToSeconds(item.average_lap),
+        fastest_display: item.fastest_lap,
+        average_display: item.average_lap,
       }));
   }, [evolution]);
 
-  // Calculate dynamic Y-axis domain
-  const yAxisDomain = useMemo(() => {
-    if (chartData.length === 0) return [0, 60];
-    
-    const allValues = chartData
-      .flatMap(d => [d.fastest_lap, d.average_lap])
-      .filter((v): v is number => v !== null);
-    if (allValues.length === 0) return [0, 60];
-    const minValue = Math.min(...allValues);
-    const maxValue = Math.max(...allValues);
-    
-    // Add 2 seconds padding on each side
-    return [Math.max(0, minValue - 2), maxValue + 2];
-  }, [chartData]);
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => {
-            const isFastestLap = entry.dataKey === 'fastest_lap';
-            return (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {isFastestLap ? 'Fastest Lap' : 'Average Lap'}:{' '}
-                {entry.payload[isFastestLap ? 'fastest_lap_display' : 'average_lap_display']}
-              </p>
-            );
-          })}
-        </div>
-      );
-    }
-    return null;
-  };
+  // Personal best lap across the shown races, highlighted in the table
+  const personalBest = useMemo(
+    () => Math.min(...chartData.map(d => d.fastest ?? Infinity)),
+    [chartData]
+  );
 
   if (isLoading) {
     return (
@@ -96,130 +61,66 @@ const DriverEvolutionPage = () => {
   if (error || !evolution) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Evolution data not found</p>
-        <Link to="/drivers">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Drivers
-          </Button>
-        </Link>
+        <p className="text-muted-foreground">No lap history for this driver.</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link to="/drivers">
+            <ArrowLeft />
+            Back to drivers
+          </Link>
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link to={`/drivers/${id}`}>
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="page-title">{evolution.driver_name.toUpperCase()}</h1>
-            <p className="text-muted-foreground">
-              Performance Evolution
-              {selectedCircuit && ` at ${selectedCircuit.name}`}
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        back={{ to: `/drivers/${id}`, label: evolution.driver_name }}
+        title="Lap time evolution"
+        subtitle={`${evolution.driver_name}${selectedCircuit ? ` at ${selectedCircuit.name}` : ', every circuit'}`}
+      />
 
-        <Select value={circuitFilter} onValueChange={setCircuitFilter}>
-          <SelectTrigger className="w-full md:w-64">
-            <SelectValue placeholder="Filter by circuit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Circuits</SelectItem>
-            {circuits?.map((circuit) => (
-              <SelectItem key={circuit.id} value={circuit.id.toString()}>
-                {circuit.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <CircuitFilter value={circuitFilter} onChange={setCircuitFilter} />
 
-      {/* Chart */}
       {chartData.length > 0 ? (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <h3 className="font-display text-xl tracking-wider mb-6">LAP TIME PROGRESSION</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  domain={yAxisDomain}
-                  tickFormatter={(value) => {
-                    const mins = Math.floor(value / 60);
-                    const secs = (value % 60).toFixed(1);
-                    return `${mins}:${secs.padStart(4, '0')}`;
-                  }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="fastest_lap"
-                  name="Fastest Lap"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="average_lap"
-                  name="Average Lap"
-                  stroke="hsl(var(--accent))"
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--accent))' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <section className="panel p-4 md:p-6">
+          <EvolutionChart data={chartData} />
+        </section>
       ) : (
-        <div className="text-center py-12 bg-card rounded-lg border border-border">
-          <p className="text-muted-foreground">No evolution data available</p>
+        <div className="panel text-center py-12">
+          <p className="text-muted-foreground">No timed races for this selection.</p>
         </div>
       )}
 
-      {/* Data Table */}
       {evolution.evolution.length > 0 && (
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <section className="panel overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="racing-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Circuit</th>
-                <th>Fastest Lap</th>
-                <th>Average Lap</th>
-              </tr>
-            </thead>
-            <tbody>
-              {evolution.evolution.map((item, index) => {
-                const circuit = circuits?.find(c => c.id === item.circuit_id);
-                return (
-                  <tr key={index}>
-                    <td>{item.date}</td>
-                    <td>{circuit?.name || 'Unknown Circuit'}</td>
-                    <td className="lap-time text-primary">{item.fastest_lap}</td>
-                    <td className="lap-time">{item.average_lap}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            <table className="racing-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Circuit</th>
+                  <th className="text-right">Fastest</th>
+                  <th className="text-right">Average</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...evolution.evolution].reverse().map((item, index) => {
+                  const circuit = circuits?.find(c => c.id === item.circuit_id);
+                  const isPb = timeToSeconds(item.fastest_lap) === personalBest;
+                  return (
+                    <tr key={index}>
+                      <td className="lap-time whitespace-nowrap">{formatRaceDate(item.date)}</td>
+                      <td className="text-muted-foreground whitespace-nowrap">{circuit?.name || 'Unknown circuit'}</td>
+                      <td className={cn('lap-time text-right', isPb && 't-purple')}>{shortLap(item.fastest_lap)}</td>
+                      <td className="lap-time text-right">{shortLap(item.average_lap)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

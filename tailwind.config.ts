@@ -7,15 +7,15 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: "1rem",
       screens: {
         "2xl": "1400px",
       },
     },
     extend: {
       fontFamily: {
-        display: ['Bebas Neue', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        display: ['Saira', 'system-ui', 'sans-serif'],
+        body: ['Saira', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -55,6 +55,9 @@ export default {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
         },
+        purple: "hsl(var(--purple))",
+        pb: "hsl(var(--pb))",
+        average: "hsl(var(--average))",
         gold: "hsl(var(--gold))",
         silver: "hsl(var(--silver))",
         bronze: "hsl(var(--bronze))",
@@ -91,12 +94,37 @@ export default {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        "tower-in": {
+          from: { opacity: "0", transform: "translateX(-24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "hero-in": {
+          from: { opacity: "0", transform: "translateX(28px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "podium-in": {
+          from: { opacity: "0.1", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "art-in": {
+          from: { opacity: "0", transform: "translateX(80px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "logo-in": {
+          from: { opacity: "0", transform: "rotate(-26deg) scale(0.85)" },
+          to: { opacity: "0.25", transform: "rotate(-14deg) scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "slide-in": "slide-in 0.3s ease-out",
-        "fade-in": "fade-in 0.5s ease-out",
+        "fade-in": "fade-in 0.35s ease-out",
+        "tower-in": "tower-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "hero-in": "hero-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "podium-in": "podium-in 0.8s ease-out both",
+        "art-in": "art-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "logo-in": "logo-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },

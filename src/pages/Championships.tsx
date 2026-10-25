@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Users, Flag, Plus, ChevronRight, Trash2 } from 'lucide-react';
+import { Trophy, Users, Flag, Plus, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import PageHeader from '@/components/racing/PageHeader';
+import { getChampionshipLogo } from '@/lib/championshipLogos';
+import { TowerRow } from '@/components/racing/TimingTower';
 
 const ChampionshipsPage = () => {
   const { isLoggedIn } = useAuth();
@@ -24,6 +27,13 @@ const ChampionshipsPage = () => {
   const { data: championships, isLoading } = useQuery({
     queryKey: ['championships'],
     queryFn: () => api.getChampionships(),
+  });
+
+  const details = useQueries({
+    queries: (championships ?? []).map(c => ({
+      queryKey: ['championship', String(c.id)],
+      queryFn: () => api.getChampionship(c.id),
+    })),
   });
 
   const { data: drivers } = useQuery({
@@ -61,57 +71,75 @@ const ChampionshipsPage = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="page-title">CHAMPIONSHIPS</h1>
-          <p className="page-subtitle">Season standings and point tables</p>
-        </div>
-        {isLoggedIn && (
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Championship
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Championships"
+        subtitle="Points tables across a season of races"
+        actions={
+          isLoggedIn && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus />
+              New championship
+            </Button>
+          )
+        }
+      />
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
       ) : championships && championships.length > 0 ? (
-        <div className="space-y-3">
-          {championships.map((c) => (
-            <Link
-              key={c.id}
-              to={`/championships/${c.id}`}
-              className="flex items-center justify-between p-5 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Trophy className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-display tracking-wider text-lg">{c.name}</p>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
-                      {c.driver_count} drivers
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Flag className="w-3.5 h-3.5" />
-                      {c.race_count} races
-                    </span>
+        <div className="grid gap-3 md:grid-cols-2">
+          {championships.map((c, i) => {
+            const detail = details[i]?.data;
+            const logo = getChampionshipLogo(c.id);
+            return (
+              <Link
+                key={c.id}
+                to={`/championships/${c.id}`}
+                className="panel group overflow-hidden hover:border-primary/60 transition-colors"
+              >
+                <div className="p-5 md:p-6 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="display uppercase text-3xl md:text-4xl group-hover:text-primary transition-colors">
+                      {c.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-2 flex gap-4">
+                      <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{c.driver_count} drivers</span>
+                      <span className="flex items-center gap-1.5"><Flag className="w-4 h-4" />{c.race_count} races</span>
+                    </p>
                   </div>
+                  {logo ? (
+                    <img
+                      src={logo}
+                      alt={`${c.name} logo`}
+                      className="w-24 h-24 md:w-28 md:h-28 object-contain shrink-0 transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3"
+                    />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0" />
+                  )}
                 </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </Link>
-          ))}
+                {detail && detail.standings.length > 0 && (
+                  <div className="border-t border-border">
+                    {detail.standings.slice(0, 3).map(s => (
+                      <TowerRow
+                        key={s.driver_id}
+                        compact
+                        position={s.position}
+                        name={s.driver_name}
+                        value={<>{s.total_points}<span className="text-xs text-muted-foreground ml-1">pts</span></>}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
         </div>
       ) : (
-        <div className="text-center py-16 bg-card rounded-lg border border-border">
-          <Trophy className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No championships yet</p>
+        <div className="panel text-center py-16">
+          <Trophy className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">No championships yet.</p>
           {isLoggedIn && (
             <Button variant="outline" className="mt-4" onClick={() => setCreateOpen(true)}>
               Create the first championship
@@ -124,7 +152,7 @@ const ChampionshipsPage = () => {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-wider">NEW CHAMPIONSHIP</DialogTitle>
+            <DialogTitle className="display text-2xl uppercase">New championship</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6 py-2">
@@ -189,7 +217,7 @@ const ChampionshipsPage = () => {
               onClick={handleSubmit}
               disabled={!form.name.trim() || form.driver_ids.length === 0 || createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating…' : 'Create'}
+              {createMutation.isPending ? 'Creating…' : 'Create championship'}
             </Button>
           </DialogFooter>
         </DialogContent>
